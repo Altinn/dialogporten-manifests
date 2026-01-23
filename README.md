@@ -1,9 +1,11 @@
-# Flux configuration (Dialogporten)
+# Dialogporten Flux manifests
 
-This folder contains the DIS app-config (`flux/dialogporten`) and syncroot wiring (`flux/syncroot`).
-Flux pulls directly from this repository via `GitRepository` and applies environment overlays under
-`flux/dialogporten/overlays/<env>`.
+This repository contains the Flux app configuration and syncroot wiring for Dialogporten on DIS.
 
-## Open action
-RoleAssignment resources for the ApplicationIdentity principals are still pending. We need the DIS
-ASO RoleAssignment schema before adding them.
+## Layout
+- `flux/dialogporten`: application manifests (base + environment overlays)
+- `flux/syncroot`: Flux `GitRepository` + `Kustomization` wiring per environment
+
+## Environments
+The overlays under `flux/dialogporten/overlays/<env>` are referenced from the syncroot kustomizations.
+Current environments: `at23`, `tt02`, `yt01`, `prod`.
