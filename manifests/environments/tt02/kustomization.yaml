@@ -3,15 +3,8 @@ kind: Kustomization
 namespace: dialogporten
 resources:
   - ../../common/base
-  - apps/web-api-eu
-  - apps/web-api-so
-  - apps/graphql
-  - apps/service
-  - jobs/web-api-migration-job
-  - jobs/sync-resource-policy-information-job
-  - jobs/sync-subject-resource-mappings-job
-  - jobs/reindex-dialogsearch-job
-  - jobs/aggregate-cost-metrics-job
+  - apps
+  - jobs
 images:
   - name: ghcr.io/altinn/dialogporten-webapi
     newTag: v.1.100.1
