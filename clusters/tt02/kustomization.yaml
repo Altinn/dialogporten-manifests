@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: dialogporten
+resources:
+  - ../../manifests/common/base
+  - ../../manifests/apps/web-api-eu/environments/tt02
+  - ../../manifests/apps/web-api-so/environments/tt02
+  - ../../manifests/apps/graphql/environments/tt02
+  - ../../manifests/apps/service/environments/tt02
+  - ../../manifests/jobs/web-api-migration-job/environments/tt02
+  - ../../manifests/jobs/sync-resource-policy-information-job/environments/tt02
+  - ../../manifests/jobs/sync-subject-resource-mappings-job/environments/tt02
+  - ../../manifests/jobs/reindex-dialogsearch-job/environments/tt02
+  - ../../manifests/jobs/aggregate-cost-metrics-job/environments/tt02
+images:
+  - name: ghcr.io/altinn/dialogporten-webapi
+    newTag: v.1.100.1
+  - name: ghcr.io/altinn/dialogporten-graphql
+    newTag: v.1.100.1
+  - name: ghcr.io/altinn/dialogporten-service
+    newTag: v.1.100.1
+  - name: ghcr.io/altinn/dialogporten-migration-bundle
+    newTag: v.1.100.1
+  - name: ghcr.io/altinn/dialogporten-janitor
+    newTag: v.1.100.1

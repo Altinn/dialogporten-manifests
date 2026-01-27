@@ -5,17 +5,9 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
-  path: ./flux/dialogporten/overlays/at23
+  path: ./flux-system/at23
   prune: true
   sourceRef:
     kind: GitRepository
     name: dialogporten
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: dialogporten-flux-substitutions
-        optional: true
-      - kind: ConfigMap
-        name: dialogporten-flux-substitutions
-        optional: false
-  targetNamespace: dialogporten
+  targetNamespace: flux-system
