@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  path: ./clusters/yt01
+  path: ./environments/yt01
   prune: true
   sourceRef:
     kind: OCIRepository

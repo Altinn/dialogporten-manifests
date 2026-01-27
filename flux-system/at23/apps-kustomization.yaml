@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  path: ./clusters/at23
+  path: ./environments/at23
   prune: true
   sourceRef:
     kind: OCIRepository
