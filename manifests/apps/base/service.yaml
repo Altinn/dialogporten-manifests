@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: web-api-eu
+  name: app
   labels:
-    app.kubernetes.io/name: web-api-eu
+    app.kubernetes.io/name: app
     app.kubernetes.io/part-of: dialogporten
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: web-api-eu
+    app.kubernetes.io/name: app
   ports:
     - name: http
       port: 80

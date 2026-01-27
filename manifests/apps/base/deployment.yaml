@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: service
+  name: app
   labels:
-    app.kubernetes.io/name: service
+    app.kubernetes.io/name: app
     app.kubernetes.io/part-of: dialogporten
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: service
+      app.kubernetes.io/name: app
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: service
+        app.kubernetes.io/name: app
         app.kubernetes.io/part-of: dialogporten
     spec:
-      serviceAccountName: service
+      serviceAccountName: app
       containers:
-        - name: service
-          image: ghcr.io/altinn/dialogporten-service:set-by-ci
+        - name: app
+          image: ghcr.io/altinn/dialogporten-app:set-by-ci
           ports:
             - containerPort: 8080
           env:
@@ -32,13 +32,6 @@ spec:
                 configMapKeyRef:
                   name: dialogporten-runtime
                   key: AZURE_APPCONFIG_URI
-            - name: ASPNETCORE_URLS
-              value: http://+:8080
-            - name: Infrastructure__MassTransit__Host
-              valueFrom:
-                configMapKeyRef:
-                  name: dialogporten-runtime
-                  key: Infrastructure__MassTransit__Host
             - name: OTEL_TRACES_SAMPLER
               value: parentbased_traceidratio
             - name: OTEL_TRACES_SAMPLER_ARG

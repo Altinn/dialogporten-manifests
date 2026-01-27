@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service
+spec:
+  template:
+    spec:
+      serviceAccountName: service
+      containers:
+        - name: service
+          image: ghcr.io/altinn/dialogporten-service:set-by-ci
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: Infrastructure__MassTransit__Host
+              valueFrom:
+                configMapKeyRef:
+                  name: dialogporten-runtime
+                  key: Infrastructure__MassTransit__Host
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: service
+spec:
+  routes:
+    - match: Host(`placeholder.invalid`) && PathPrefix(`/dialogporten/service`)
+      priority: 5
+      middlewares:
+        - name: service-ip-allowlist
+      services:
+        - name: service
+          port: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: service-ip-allowlist
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: service
+spec:
+  scaleTargetRef:
+    name: service
+---
+apiVersion: application.dis.altinn.cloud/v1alpha1
+kind: ApplicationIdentity
+metadata:
+  name: service

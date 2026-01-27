@@ -1,15 +1,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: service
+  name: app
   labels:
-    app.kubernetes.io/name: service
+    app.kubernetes.io/name: app
     app.kubernetes.io/part-of: dialogporten
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: service
+    name: app
   minReplicas: 1
   maxReplicas: 10
   metrics:

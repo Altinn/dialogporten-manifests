@@ -1,9 +1,9 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: graphql
+  name: app
   labels:
-    app.kubernetes.io/name: graphql
+    app.kubernetes.io/name: app
     app.kubernetes.io/part-of: dialogporten
 spec:
   entryPoints:
@@ -11,10 +11,10 @@ spec:
     - https
   routes:
     - kind: Rule
-      match: Host(`placeholder.invalid`) && PathPrefix(`/dialogporten/graphql`)
-      priority: 20
+      match: Host(`placeholder.invalid`) && PathPrefix(`/dialogporten`)
+      priority: 1
       middlewares:
-        - name: graphql-ip-allowlist
+        - name: app-ip-allowlist
       services:
-        - name: graphql
+        - name: app
           port: 80
