@@ -1,10 +1,11 @@
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: GitRepository
+kind: OCIRepository
 metadata:
   name: dialogporten
   namespace: flux-system
 spec:
   interval: 10m
-  url: https://github.com/Altinn/dialogporten-manifests
+  provider: azure
+  url: oci://altinncr.azurecr.io/dialogporten/dialogporten-sync
   ref:
-    branch: main
+    tag: main

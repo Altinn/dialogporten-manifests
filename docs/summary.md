@@ -8,7 +8,7 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/apps/base`: Single common app base; app overlays under `manifests/apps/<app>/` patch names, images, ingress, env, and HPA differences.
 - `environments/<env>/`: Thin wrapper kustomization that simply references `manifests/environments/<env>`; Flux paths can target this.
 - `flux-system/<env>/`: Flux `OCIRepository` + `Kustomization` per environment, pointing at `./environments/<env>` inside the OCI artifact.
-- `flux/syncroot/`: Bootstrap namespace + GitRepository (this repo) + Kustomization that selects the right `flux-system/<env>` path.
+- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `flux-system/<env>` path.
 
 ## Flow
 1. CI builds an OCI artifact per environment (e.g. `ghcr.io/altinn/dialogporten-manifests:${ENV}-${SHORT_SHA}`) that includes `manifests/`.
