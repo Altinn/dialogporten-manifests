@@ -35,6 +35,10 @@ If environment set changes, update:
 
 ## Validation
 Run:
+- `kustomize build environments/at23`
+- `kustomize build environments/tt02`
+- `kustomize build environments/yt01`
+- `kustomize build environments/prod`
 - `kustomize build flux/syncroot/at23`
 - `kustomize build flux/syncroot/tt02`
 - `kustomize build flux/syncroot/yt01`

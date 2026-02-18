@@ -4,7 +4,7 @@ This repository contains the Flux wiring and workload manifests for Dialogporten
 
 ## Layout
 - `manifests/`: shared bases (`apps/`, `jobs/`, `common/`) plus per-environment overlays collected under `manifests/environments/<env>/`.
-- `manifests/apps/base`: single common app base; each app overlay (`manifests/apps/<app>/`) patches names, image, ingress path, and any app-specific env/HPA tweaks.
+- `manifests/apps/components/<app>/`: per-app reusable component manifests (`web-api-eu`, `web-api-so`, `graphql`, `service`) consumed by environment overlays.
 - `manifests/environments/<env>/kustomization.yaml`: concise env entrypoint that pulls all app/job overlays for that env and sets image tags.
 - `environments/<env>/`: thin wrapper kustomization that points Flux to the corresponding `manifests/environments/<env>` (keeps the old `clusters/<env>` path shape, now renamed).
 - `flux-system/<env>/`: Flux `OCIRepository` + `Kustomization` definitions that point Flux at `./environments/<env>` (which in turn includes `manifests/environments/<env>`) inside the OCI artifact.
