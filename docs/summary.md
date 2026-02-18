@@ -17,3 +17,5 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 4. Application container images remain on GHCR and are pinned in `manifests/environments/<env>/kustomization.yaml`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
+
+Change-maintenance rules are defined in `AGENTS.md` and `skills/dialogporten-manifests-maintenance/SKILL.md`.

@@ -20,3 +20,5 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`.
 
 See `docs/summary.md` for more detail.
+Agent/maintenance rules live in `AGENTS.md`.
+Local maintenance skill: `skills/dialogporten-manifests-maintenance/SKILL.md`.
