@@ -11,8 +11,9 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `flux-system/<env>` path.
 
 ## Flow
-1. CI builds an OCI artifact per environment (e.g. `ghcr.io/altinn/dialogporten-manifests:${ENV}-${SHORT_SHA}`) that includes `manifests/`.
-2. CI updates `flux-system/<env>/ocirepository.yaml` `spec.ref.tag` to the new tag.
+1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`) on every commit to `main`.
+2. `flux-system/<env>/ocirepository.yaml` points to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
 3. Flux pulls the OCI artifact and `dialogporten-apps-<env>` applies `environments/<env>` (which loads `manifests/environments/<env>`) with substitutions from `dialogporten-flux-substitutions`.
+4. Application container images remain on GHCR and are pinned in `manifests/environments/<env>/kustomization.yaml`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.

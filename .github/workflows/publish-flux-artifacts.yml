@@ -55,12 +55,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
-      - name: Validate app overlays
+      - name: Validate app manifests structure
         shell: bash
         run: |
           for env in at23 tt02 yt01 prod; do
-            if [ ! -f "./flux/dialogporten/overlays/${env}/kustomization.yaml" ]; then
-              echo "Error: Missing ./flux/dialogporten/overlays/${env}/kustomization.yaml"
+            if [ ! -f "./environments/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./environments/${env}/kustomization.yaml"
+              exit 1
+            fi
+            if [ ! -f "./manifests/environments/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./manifests/environments/${env}/kustomization.yaml"
+              exit 1
+            fi
+            if [ ! -f "./flux-system/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./flux-system/${env}/kustomization.yaml"
               exit 1
             fi
           done
@@ -70,7 +78,7 @@ jobs:
         with:
           image_name: ${{ env.APP_ARTIFACT_NAME }}
           tag: main
-          workdir: ./flux/dialogporten
+          workdir: .
           azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.AZURE_CLIENT_ID }}
           azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
