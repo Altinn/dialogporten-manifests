@@ -13,4 +13,4 @@ patches:
         name: dialogporten
         namespace: flux-system
       spec:
-        path: ./flux/dialogporten/overlays/prod
+        path: ./flux-system/prod

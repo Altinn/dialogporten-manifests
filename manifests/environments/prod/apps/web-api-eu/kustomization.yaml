@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../../apps/base
+patchesStrategicMerge:
+  - ../../../../apps/components/web-api-eu.yaml
+  - allowlist.yaml
+  - deployment-env.yaml
+  - deployment-resources.yaml
+  - hpa-min.yaml

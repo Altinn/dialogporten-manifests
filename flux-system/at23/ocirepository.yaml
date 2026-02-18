@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta3
+kind: OCIRepository
+metadata:
+  name: dialogporten-manifests-at23
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  url: oci://ghcr.io/altinn/dialogporten-manifests
+  ref:
+    tag: at23-latest # Updated by CI to the env short SHA tag

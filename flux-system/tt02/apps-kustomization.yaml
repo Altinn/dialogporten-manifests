@@ -1,0 +1,21 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta3
+kind: Kustomization
+metadata:
+  name: dialogporten-apps-tt02
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./environments/tt02
+  prune: true
+  sourceRef:
+    kind: OCIRepository
+    name: dialogporten-manifests-tt02
+  targetNamespace: dialogporten
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: dialogporten-flux-substitutions
+        optional: true
+      - kind: ConfigMap
+        name: dialogporten-flux-substitutions
+        optional: false
