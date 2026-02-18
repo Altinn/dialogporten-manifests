@@ -21,4 +21,4 @@ Application runtime images remain GHCR-hosted and are pinned by tags in `manifes
 
 See `docs/summary.md` for more detail.
 Agent/maintenance rules live in `AGENTS.md`.
-Local maintenance skill: `skills/dialogporten-manifests-maintenance/SKILL.md`.
+Local maintenance skill: `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`.

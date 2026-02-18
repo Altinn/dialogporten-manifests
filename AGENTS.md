@@ -22,7 +22,7 @@ When changing structure, environments, Flux source wiring, workflow publish logi
 - `README.md`
 - `docs/summary.md`
 - `AGENTS.md`
-- `skills/dialogporten-manifests-maintenance/SKILL.md`
+- `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`
 - `.github/workflows/publish-flux-artifacts.yml` (if env list/path/source assumptions change)
 
 ## Environment additions/removals
