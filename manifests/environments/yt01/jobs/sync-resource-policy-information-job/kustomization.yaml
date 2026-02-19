@@ -2,6 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../../../jobs/sync-resource-policy-information-job/base
-patchesStrategicMerge:
-  - env.yaml
-  - schedule.yaml
+patches:
+  - path: env.yaml
+  - path: schedule.yaml
