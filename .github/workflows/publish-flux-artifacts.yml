@@ -58,6 +58,8 @@ jobs:
       - name: Validate app manifests structure
         shell: bash
         run: |
+          set -euo pipefail
+
           for env in at23 tt02 yt01 prod; do
             if [ ! -f "./environments/${env}/kustomization.yaml" ]; then
               echo "Error: Missing ./environments/${env}/kustomization.yaml"
@@ -71,6 +73,43 @@ jobs:
               echo "Error: Missing ./flux-system/${env}/kustomization.yaml"
               exit 1
             fi
+          done
+
+          for app in web-api-eu web-api-so graphql service; do
+            if [ ! -f "./manifests/apps/${app}/base/kustomization.yaml" ]; then
+              echo "Error: Missing ./manifests/apps/${app}/base/kustomization.yaml"
+              exit 1
+            fi
+          done
+
+          if [ -d "./manifests/apps/components" ] || [ -d "./manifests/apps/base" ]; then
+            echo "Error: Legacy app manifest paths detected (manifests/apps/components or manifests/apps/base)."
+            exit 1
+          fi
+
+          if grep -R --include='kustomization.yaml' -n 'patchesStrategicMerge' ./manifests/environments; then
+            echo "Error: Found deprecated patchesStrategicMerge usage."
+            exit 1
+          fi
+
+          build_kustomize() {
+            local path="$1"
+            if command -v kustomize >/dev/null 2>&1; then
+              kustomize build "$path" >/dev/null
+              return
+            fi
+            if command -v kubectl >/dev/null 2>&1; then
+              kubectl kustomize "$path" >/dev/null
+              return
+            fi
+            echo "Error: Neither 'kustomize' nor 'kubectl' found in runner PATH."
+            exit 1
+          }
+
+          for env in at23 tt02 yt01 prod; do
+            build_kustomize "./environments/${env}"
+            build_kustomize "./flux/syncroot/${env}"
+            build_kustomize "./flux-system/${env}"
           done
 
       - name: Build and push app manifests artifact

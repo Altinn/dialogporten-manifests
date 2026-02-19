@@ -5,7 +5,8 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 
 ## Current structure (authoritative)
 - `manifests/`: app, job, and common bases plus per-environment overlays in `manifests/environments/<env>/`.
-- `manifests/apps/components/<app>/`: reusable app component manifests consumed by each environment overlay.
+- `manifests/apps/<app>/base/`: canonical reusable app base manifests consumed by each environment overlay.
+- `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
 - `environments/<env>/`: wrapper kustomizations consumed by Flux app kustomizations.
 - `flux-system/<env>/`: environment-scoped `OCIRepository` + app `Kustomization` objects.
 - `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`.
