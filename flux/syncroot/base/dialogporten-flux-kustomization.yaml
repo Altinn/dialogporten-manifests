@@ -8,6 +8,6 @@ spec:
   path: ./flux-system/at23
   prune: true
   sourceRef:
-    kind: GitRepository
+    kind: OCIRepository
     name: dialogporten
   targetNamespace: flux-system

@@ -1,0 +1,84 @@
+name: Publish Flux artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+env:
+  SYNCROOT_ARTIFACT_NAME: dialogporten/syncroot
+  APP_ARTIFACT_NAME: dialogporten/dialogporten-sync
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-flux-artifacts-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  publish-syncroot:
+    name: Publish syncroot artifact
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Validate syncroot structure
+        shell: bash
+        run: |
+          for env in at23 tt02 yt01 prod; do
+            if [ ! -f "./flux/syncroot/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./flux/syncroot/${env}/kustomization.yaml"
+              exit 1
+            fi
+          done
+
+      - name: Build and push syncroot artifact
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@8d4e42eae11efbc3a159aa62fe15ed49954d9df9 # main
+        with:
+          image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
+          tag: main
+          workdir: ./flux/syncroot
+          azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azure_app_id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+
+  publish-app-manifests:
+    name: Publish app manifests artifact
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Validate app manifests structure
+        shell: bash
+        run: |
+          for env in at23 tt02 yt01 prod; do
+            if [ ! -f "./environments/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./environments/${env}/kustomization.yaml"
+              exit 1
+            fi
+            if [ ! -f "./manifests/environments/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./manifests/environments/${env}/kustomization.yaml"
+              exit 1
+            fi
+            if [ ! -f "./flux-system/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./flux-system/${env}/kustomization.yaml"
+              exit 1
+            fi
+          done
+
+      - name: Build and push app manifests artifact
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@8d4e42eae11efbc3a159aa62fe15ed49954d9df9 # main
+        with:
+          image_name: ${{ env.APP_ARTIFACT_NAME }}
+          tag: main
+          workdir: .
+          azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azure_app_id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}

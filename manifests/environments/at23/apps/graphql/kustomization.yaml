@@ -1,8 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../../../apps/base
+  - ../../../../apps/components/graphql
 patchesStrategicMerge:
-  - ../../../../apps/components/graphql.yaml
   - allowlist.yaml
   - deployment-env.yaml

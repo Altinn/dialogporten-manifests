@@ -5,6 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m0s
-  url: oci://ghcr.io/altinn/dialogporten-manifests
+  provider: azure
+  url: oci://altinncr.azurecr.io/dialogporten/dialogporten-sync
   ref:
-    tag: at23-latest # Updated by CI to the env short SHA tag
+    tag: main
