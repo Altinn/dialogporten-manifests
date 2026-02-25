@@ -131,3 +131,4 @@ metadata:
   labels:
     app.kubernetes.io/name: graphql
     app.kubernetes.io/part-of: dialogporten
+spec: {}

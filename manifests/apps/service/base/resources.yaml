@@ -133,3 +133,4 @@ metadata:
   labels:
     app.kubernetes.io/name: service
     app.kubernetes.io/part-of: dialogporten
+spec: {}
