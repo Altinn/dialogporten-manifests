@@ -124,8 +124,10 @@ metadata:
     app.kubernetes.io/part-of: dialogporten
 spec:
   scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
     name: web-api-eu
-  maxReplicas: 20
+  maxReplicas: 2
   metrics:
     - type: Resource
       resource:

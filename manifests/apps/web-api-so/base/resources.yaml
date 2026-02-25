@@ -124,7 +124,10 @@ metadata:
     app.kubernetes.io/part-of: dialogporten
 spec:
   scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
     name: web-api-so
+  maxReplicas: 2
 ---
 apiVersion: application.dis.altinn.cloud/v1alpha1
 kind: ApplicationIdentity
