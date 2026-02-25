@@ -12,3 +12,19 @@ spec:
               value: prod
             - name: OTEL_TRACES_SAMPLER_ARG
               value: "0.2"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-api-eu-runtime
+  labels:
+    app.kubernetes.io/instance: prod
+data:
+  DIALOGPORTEN_ENVIRONMENT: prod
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: web-api-eu-secrets
+  labels:
+    app.kubernetes.io/instance: prod

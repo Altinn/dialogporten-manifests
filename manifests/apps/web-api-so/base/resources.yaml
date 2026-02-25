@@ -19,9 +19,57 @@ spec:
       containers:
         - name: web-api-so
           image: ghcr.io/altinn/dialogporten-webapi:set-by-ci
+          envFrom:
+            - configMapRef:
+                name: web-api-so-runtime
           env:
             - name: ASPNETCORE_URLS
               value: http://+:8080
+            - name: Infrastructure__DialogDbConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: web-api-so-secrets
+                  key: dialogportenAdoConnectionString
+            - name: Infrastructure__Redis__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: web-api-so-secrets
+                  key: dialogportenRedisConnectionString
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-api-so-runtime
+  labels:
+    app.kubernetes.io/name: web-api-so
+    app.kubernetes.io/part-of: dialogporten
+data:
+  AZURE_APPCONFIG_URI: ${DIALOGPORTEN_AZURE_APPCONFIG_URI}
+  Infrastructure__MassTransit__Host: ${DIALOGPORTEN_SERVICEBUS_HOST}
+  DIALOGPORTEN_ENVIRONMENT: set-by-env
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: web-api-so-secrets
+  labels:
+    app.kubernetes.io/name: web-api-so
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: dialogporten-azure-kv
+  target:
+    name: web-api-so-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: dialogportenAdoConnectionString
+      remoteRef:
+        key: dialogportenAdoConnectionString
+    - secretKey: dialogportenRedisConnectionString
+      remoteRef:
+        key: dialogportenRedisConnectionString
 ---
 apiVersion: v1
 kind: Service

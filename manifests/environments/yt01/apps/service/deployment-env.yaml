@@ -12,3 +12,19 @@ spec:
               value: yt01
             - name: OTEL_TRACES_SAMPLER_ARG
               value: "1"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-runtime
+  labels:
+    app.kubernetes.io/instance: yt01
+data:
+  DIALOGPORTEN_ENVIRONMENT: yt01
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: service-secrets
+  labels:
+    app.kubernetes.io/instance: yt01

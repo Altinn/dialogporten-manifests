@@ -18,4 +18,4 @@ spec:
         optional: true
       - kind: ConfigMap
         name: dialogporten-flux-substitutions
-        optional: false
+        optional: true
