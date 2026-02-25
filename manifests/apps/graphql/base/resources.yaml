@@ -22,8 +22,17 @@ spec:
           envFrom:
             - configMapRef:
                 name: graphql-runtime
-            - secretRef:
-                name: graphql-secrets
+          env:
+            - name: Infrastructure__DialogDbConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: graphql-secrets
+                  key: dialogportenAdoConnectionString
+            - name: Infrastructure__Redis__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: graphql-secrets
+                  key: dialogportenRedisConnectionString
 ---
 apiVersion: v1
 kind: ConfigMap

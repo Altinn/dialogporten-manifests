@@ -22,11 +22,19 @@ spec:
           envFrom:
             - configMapRef:
                 name: web-api-so-runtime
-            - secretRef:
-                name: web-api-so-secrets
           env:
             - name: ASPNETCORE_URLS
               value: http://+:8080
+            - name: Infrastructure__DialogDbConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: web-api-so-secrets
+                  key: dialogportenAdoConnectionString
+            - name: Infrastructure__Redis__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: web-api-so-secrets
+                  key: dialogportenRedisConnectionString
 ---
 apiVersion: v1
 kind: ConfigMap
