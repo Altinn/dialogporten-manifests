@@ -122,7 +122,10 @@ metadata:
     app.kubernetes.io/part-of: dialogporten
 spec:
   scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
     name: graphql
+  maxReplicas: 20
 ---
 apiVersion: application.dis.altinn.cloud/v1alpha1
 kind: ApplicationIdentity
