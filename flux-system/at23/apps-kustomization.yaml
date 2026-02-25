@@ -11,11 +11,3 @@ spec:
     kind: OCIRepository
     name: dialogporten-manifests-at23
   targetNamespace: dialogporten
-  postBuild:
-    substituteFrom:
-      - kind: Secret
-        name: dialogporten-flux-substitutions
-        optional: true
-      - kind: ConfigMap
-        name: dialogporten-flux-substitutions
-        optional: true

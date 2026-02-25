@@ -16,7 +16,7 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 ## OCI flow (high level)
 1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot` and app manifests from the repository root.
 2. `flux-system/<env>/ocirepository.yaml` points to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
-3. Flux pulls that OCI artifact, and `dialogporten-apps-<env>` applies `environments/<env>` (which loads `manifests/environments/<env>`) with substitutions from `dialogporten-flux-substitutions`.
+3. Flux pulls that OCI artifact, and `dialogporten-apps-<env>` applies `environments/<env>` (which loads `manifests/environments/<env>`) directly (no `postBuild` substitutions).
 
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`.
 

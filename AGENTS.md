@@ -17,6 +17,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - Flux manifests artifacts: ACR (`altinncr.azurecr.io`), published as:
   - `dialogporten/dialogporten-sync:main` (app manifests)
   - `dialogporten/syncroot:main` (syncroot)
+- Flux app `Kustomization` objects apply environment wrappers directly and do not use `postBuild.substituteFrom`.
 
 ## Change hygiene (required)
 When changing structure, environments, Flux source wiring, workflow publish logic, or registry/source strategy, update all relevant guidance in the same PR:
