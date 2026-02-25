@@ -19,14 +19,49 @@ spec:
       containers:
         - name: service
           image: ghcr.io/altinn/dialogporten-service:set-by-ci
+          envFrom:
+            - configMapRef:
+                name: service-runtime
+            - secretRef:
+                name: service-secrets
           env:
             - name: ASPNETCORE_URLS
               value: http://+:8080
-            - name: Infrastructure__MassTransit__Host
-              valueFrom:
-                configMapKeyRef:
-                  name: dialogporten-runtime
-                  key: Infrastructure__MassTransit__Host
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-runtime
+  labels:
+    app.kubernetes.io/name: service
+    app.kubernetes.io/part-of: dialogporten
+data:
+  AZURE_APPCONFIG_URI: ${DIALOGPORTEN_AZURE_APPCONFIG_URI}
+  Infrastructure__MassTransit__Host: ${DIALOGPORTEN_SERVICEBUS_HOST}
+  DIALOGPORTEN_ENVIRONMENT: set-by-env
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: service-secrets
+  labels:
+    app.kubernetes.io/name: service
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: dialogporten-azure-kv
+  target:
+    name: service-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: dialogportenAdoConnectionString
+      remoteRef:
+        key: dialogportenAdoConnectionString
+    - secretKey: dialogportenRedisConnectionString
+      remoteRef:
+        key: dialogportenRedisConnectionString
 ---
 apiVersion: v1
 kind: Service
