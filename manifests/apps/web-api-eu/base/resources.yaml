@@ -141,3 +141,4 @@ metadata:
   labels:
     app.kubernetes.io/name: web-api-eu
     app.kubernetes.io/part-of: dialogporten
+spec: {}
