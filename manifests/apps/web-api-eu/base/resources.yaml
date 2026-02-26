@@ -48,7 +48,7 @@ data:
   Infrastructure__MassTransit__Host: ${DIALOGPORTEN_SERVICEBUS_HOST}
   DIALOGPORTEN_ENVIRONMENT: set-by-env
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: web-api-eu-secrets

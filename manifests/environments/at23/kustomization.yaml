@@ -5,6 +5,8 @@ resources:
   - ../../common/base
   - apps
   - jobs
+patches:
+  - path: secretstore-vault-url.yaml
 images:
   - name: ghcr.io/altinn/dialogporten-webapi
     newTag: v.1.100.1
