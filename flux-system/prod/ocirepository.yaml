@@ -2,7 +2,7 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
   name: dialogporten-manifests-prod
-  namespace: flux-system
+  namespace: dialogporten
 spec:
   interval: 1m0s
   provider: azure
