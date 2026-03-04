@@ -21,6 +21,8 @@ metadata:
     app.kubernetes.io/instance: tt02
 data:
   DIALOGPORTEN_ENVIRONMENT: staging
+  AZURE_APPCONFIG_URI: https://dp-be-staging-appconfiguration-ryymdlozopam2.azconfig.io
+  Infrastructure__MassTransit__Host: sb://dp-be-staging-service-bus-ryymdlozopam2.servicebus.windows.net/
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret

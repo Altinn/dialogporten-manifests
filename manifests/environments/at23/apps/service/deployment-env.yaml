@@ -21,6 +21,8 @@ metadata:
     app.kubernetes.io/instance: at23
 data:
   DIALOGPORTEN_ENVIRONMENT: test
+  AZURE_APPCONFIG_URI: https://dp-be-test-appconfiguration-i7se3jtjey3lo.azconfig.io
+  Infrastructure__MassTransit__Host: sb://dp-be-test-service-bus-i7se3jtjey3lo.servicebus.windows.net/
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
