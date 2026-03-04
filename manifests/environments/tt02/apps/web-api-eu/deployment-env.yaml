@@ -20,6 +20,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: tt02
 data:
+  AZURE_APPCONFIG_URI: https://dp-be-staging-appconfiguration-ryymdlozopam2.azconfig.io
   DIALOGPORTEN_ENVIRONMENT: staging
 ---
 apiVersion: external-secrets.io/v1

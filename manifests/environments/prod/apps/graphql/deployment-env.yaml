@@ -20,6 +20,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: prod
 data:
+  AZURE_APPCONFIG_URI: https://dp-be-prod-appconfiguration-adeqyizi6r4eu.azconfig.io
   DIALOGPORTEN_ENVIRONMENT: prod
 ---
 apiVersion: external-secrets.io/v1

@@ -20,6 +20,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: yt01
 data:
+  AZURE_APPCONFIG_URI: https://dp-be-yt01-appconfiguration-kqvtgk2puprvm.azconfig.io
   DIALOGPORTEN_ENVIRONMENT: yt01
 ---
 apiVersion: external-secrets.io/v1

@@ -5,4 +5,3 @@ metadata:
   labels:
     app.kubernetes.io/part-of: dialogporten
 data:
-  AZURE_APPCONFIG_URI: ${DIALOGPORTEN_AZURE_APPCONFIG_URI}
