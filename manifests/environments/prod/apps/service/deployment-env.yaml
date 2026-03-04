@@ -21,6 +21,8 @@ metadata:
     app.kubernetes.io/instance: prod
 data:
   DIALOGPORTEN_ENVIRONMENT: prod
+  AZURE_APPCONFIG_URI: https://dp-be-prod-appconfiguration-adeqyizi6r4eu.azconfig.io
+  Infrastructure__MassTransit__Host: sb://dp-be-prod-service-bus-adeqyizi6r4eu.servicebus.windows.net/
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
