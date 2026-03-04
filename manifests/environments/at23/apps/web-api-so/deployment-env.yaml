@@ -20,6 +20,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: at23
 data:
+  AZURE_APPCONFIG_URI: https://dp-be-test-appconfiguration-i7se3jtjey3lo.azconfig.io
   DIALOGPORTEN_ENVIRONMENT: test
 ---
 apiVersion: external-secrets.io/v1

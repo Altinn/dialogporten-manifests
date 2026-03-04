@@ -44,7 +44,6 @@ metadata:
     app.kubernetes.io/name: web-api-so
     app.kubernetes.io/part-of: dialogporten
 data:
-  AZURE_APPCONFIG_URI: ${DIALOGPORTEN_AZURE_APPCONFIG_URI}
   DIALOGPORTEN_ENVIRONMENT: set-by-env
 ---
 apiVersion: external-secrets.io/v1
