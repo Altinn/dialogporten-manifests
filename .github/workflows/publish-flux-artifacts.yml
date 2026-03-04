@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: publish-flux-artifacts-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   publish-syncroot:
