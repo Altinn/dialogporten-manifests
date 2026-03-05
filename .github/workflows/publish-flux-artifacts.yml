@@ -28,14 +28,9 @@ jobs:
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Validate syncroot structure
-        shell: bash
-        run: |
-          for env in at23 tt02 yt01 prod; do
-            if [ ! -f "./flux/syncroot/${env}/kustomization.yaml" ]; then
-              echo "Error: Missing ./flux/syncroot/${env}/kustomization.yaml"
-              exit 1
-            fi
-          done
+        uses: Altinn/altinn-platform/actions/flux/verify-syncroot@eabd046d5375504fdc4544d20dcc9a151e28b259 # main
+        with:
+          workdir: ./flux/syncroot
 
       - name: Build and push syncroot artifact
         uses: Altinn/altinn-platform/actions/flux/build-push-image@8d4e42eae11efbc3a159aa62fe15ed49954d9df9 # main
