@@ -195,11 +195,6 @@ jobs:
                   echo "</details>"
                   echo ""
                 } >> /tmp/diff-comment.md
-              else
-                {
-                  echo "<details><summary>${display} - no changes</summary></details>"
-                  echo ""
-                } >> /tmp/diff-comment.md
               fi
             done
           done
