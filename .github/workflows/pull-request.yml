@@ -154,7 +154,11 @@ jobs:
 
       - name: Install dyff
         shell: bash
-        run: curl --silent --location https://git.io/JYfAY | bash
+        run: |
+          curl -fsSL -o dyff.tar.gz https://github.com/homeport/dyff/releases/download/v1.11.2/dyff_1.11.2_linux_amd64.tar.gz
+          echo "84e952f8ac40c8824de83d81261f9f6c5b984b5ff367eb08b688e0c1450a4f85  dyff.tar.gz" | sha256sum -c -
+          tar -xzf dyff.tar.gz -C /usr/local/bin dyff
+          rm dyff.tar.gz
 
       - name: Generate diff comment
         id: diff
@@ -164,8 +168,11 @@ jobs:
           TOTAL=0
           > /tmp/diff-body.md
 
-          for pr_env_file in kustomize-pr/environments-*.yaml; do
-            env=$(basename "$pr_env_file" .yaml | sed 's/^environments-//')
+          envs=$(
+            { ls kustomize-pr/environments-*.yaml 2>/dev/null; ls kustomize-base/environments-*.yaml 2>/dev/null; } \
+              | xargs -I{} basename {} .yaml | sed 's/^environments-//' | sort -u
+          )
+          for env in $envs; do
             for path_type in environments flux-syncroot flux-system; do
               path_key="${path_type}-${env}"
               TOTAL=$((TOTAL + 1))
