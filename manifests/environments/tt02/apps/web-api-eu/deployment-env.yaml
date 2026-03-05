@@ -10,8 +10,8 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: staging
-            - name: OTEL_TRACES_SAMPLER_ARG
-              value: "1"
+            - name: MY_TEST_ENV_VAR
+              value: "hello-world"
 ---
 apiVersion: v1
 kind: ConfigMap
