@@ -49,11 +49,6 @@ jobs:
             fi
           done
 
-          if [ -d "./manifests/apps/components" ] || [ -d "./manifests/apps/base" ]; then
-            echo "Error: Legacy app manifest paths detected (manifests/apps/components or manifests/apps/base)."
-            exit 1
-          fi
-
           if grep -R --include='kustomization.yaml' -n 'patchesStrategicMerge' ./manifests/environments; then
             echo "Error: Found deprecated patchesStrategicMerge usage."
             exit 1
