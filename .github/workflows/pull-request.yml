@@ -186,7 +186,7 @@ jobs:
 
               if [ "$DIFF_EXIT" -ne 0 ]; then
                 CHANGED=$((CHANGED + 1))
-                DIFF_OUTPUT=$(diff --unified "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
+                DIFF_OUTPUT=$(diff --unified=9999 "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
                 {
                   echo "<details><summary>🔴 <code>${display}</code></summary>"
                   echo ""
