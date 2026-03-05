@@ -54,7 +54,7 @@ jobs:
           fi
 
   kustomize-diff:
-    uses: dis-way/.github/.github/workflows/kustomize-diff.yml@arealmaas/dublin
+    uses: dis-way/actions/.github/workflows/kustomize-diff.yml@arealmaas/marseille
     with:
       build-paths: "environments/*,flux/syncroot/*,flux-system/*"
     permissions:
