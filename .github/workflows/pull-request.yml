@@ -172,7 +172,8 @@ jobs:
             { ls kustomize-pr/environments-*.yaml 2>/dev/null; ls kustomize-base/environments-*.yaml 2>/dev/null; } \
               | xargs -I{} basename {} .yaml | sed 's/^environments-//' | sort -u
           )
-          for env in $envs; do
+          while IFS= read -r env; do
+            [ -z "$env" ] && continue
             for path_type in environments flux-syncroot flux-system; do
               path_key="${path_type}-${env}"
               TOTAL=$((TOTAL + 1))
@@ -193,8 +194,8 @@ jobs:
 
               if [ "$DIFF_EXIT" -ne 0 ]; then
                 CHANGED=$((CHANGED + 1))
-                SHORT_DIFF=$(diff --unified "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
-                FULL_DIFF=$(diff --unified=9999 "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
+                SHORT_DIFF=$(diff --unified "$base_file" "$pr_file" 2>&1 | tail -n +3 | sed 's/```/` ` `/g') || true
+                FULL_DIFF=$(diff --unified=9999 "$base_file" "$pr_file" 2>&1 | tail -n +3 | sed 's/```/` ` `/g') || true
                 {
                   echo "<details><summary>🔴 <code>${display}</code></summary>"
                   echo ""
@@ -215,7 +216,7 @@ jobs:
                 } >> /tmp/diff-body.md
               fi
             done
-          done
+          done <<< "$envs"
 
           {
             echo "<!-- kustomize-diff -->"
