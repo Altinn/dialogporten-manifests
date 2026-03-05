@@ -30,7 +30,8 @@ jobs:
       - name: Validate syncroot structure
         shell: bash
         run: |
-          for env in at23 tt02 yt01 prod; do
+          for dir in ./environments/*/; do
+            env=$(basename "$dir")
             if [ ! -f "./flux/syncroot/${env}/kustomization.yaml" ]; then
               echo "Error: Missing ./flux/syncroot/${env}/kustomization.yaml"
               exit 1
@@ -60,7 +61,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          for env in at23 tt02 yt01 prod; do
+          for dir in ./environments/*/; do
+            env=$(basename "$dir")
             if [ ! -f "./environments/${env}/kustomization.yaml" ]; then
               echo "Error: Missing ./environments/${env}/kustomization.yaml"
               exit 1
@@ -75,9 +77,9 @@ jobs:
             fi
           done
 
-          for app in web-api-eu web-api-so graphql service; do
-            if [ ! -f "./manifests/apps/${app}/base/kustomization.yaml" ]; then
-              echo "Error: Missing ./manifests/apps/${app}/base/kustomization.yaml"
+          for dir in ./manifests/apps/*/ ./manifests/jobs/*/; do
+            if [ ! -f "${dir}base/kustomization.yaml" ]; then
+              echo "Error: Missing ${dir}base/kustomization.yaml"
               exit 1
             fi
           done
@@ -106,7 +108,8 @@ jobs:
             exit 1
           }
 
-          for env in at23 tt02 yt01 prod; do
+          for dir in ./environments/*/; do
+            env=$(basename "$dir")
             build_kustomize "./environments/${env}"
             build_kustomize "./flux/syncroot/${env}"
             build_kustomize "./flux-system/${env}"
