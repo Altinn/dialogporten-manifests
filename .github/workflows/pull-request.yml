@@ -182,14 +182,15 @@ jobs:
               [ ! -f "$pr_file" ]   && pr_file="/dev/null"
               [ ! -f "$base_file" ] && base_file="/dev/null"
 
-              DIFF_OUTPUT=$(dyff between --omit-header --set-exit-code "$base_file" "$pr_file" 2>&1) && DIFF_EXIT=0 || DIFF_EXIT=$?
+              dyff between --omit-header --set-exit-code "$base_file" "$pr_file" >/dev/null 2>&1 && DIFF_EXIT=0 || DIFF_EXIT=$?
 
               if [ "$DIFF_EXIT" -ne 0 ]; then
                 CHANGED=$((CHANGED + 1))
+                DIFF_OUTPUT=$(diff --unified "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
                 {
                   echo "<details><summary>🔴 <code>${display}</code></summary>"
                   echo ""
-                  echo '```'
+                  echo '```diff'
                   echo "$DIFF_OUTPUT"
                   echo '```'
                   echo ""
