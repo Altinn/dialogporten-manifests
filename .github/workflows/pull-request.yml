@@ -160,18 +160,15 @@ jobs:
         id: diff
         shell: bash
         run: |
-          {
-            echo "<!-- kustomize-diff -->"
-            echo "## Kustomize Diff"
-            echo ""
-          } > /tmp/diff-comment.md
-
-          HAS_CHANGES=false
+          CHANGED=0
+          TOTAL=0
+          > /tmp/diff-body.md
 
           for pr_env_file in kustomize-pr/environments-*.yaml; do
             env=$(basename "$pr_env_file" .yaml | sed 's/^environments-//')
             for path_type in environments flux-syncroot flux-system; do
               path_key="${path_type}-${env}"
+              TOTAL=$((TOTAL + 1))
 
               case "$path_type" in
                 environments) display="environments/${env}" ;;
@@ -188,9 +185,9 @@ jobs:
               DIFF_OUTPUT=$(dyff between --omit-header --set-exit-code "$base_file" "$pr_file" 2>&1) && DIFF_EXIT=0 || DIFF_EXIT=$?
 
               if [ "$DIFF_EXIT" -ne 0 ]; then
-                HAS_CHANGES=true
+                CHANGED=$((CHANGED + 1))
                 {
-                  echo "<details><summary>${display} - changes detected</summary>"
+                  echo "<details><summary>🔴 <code>${display}</code></summary>"
                   echo ""
                   echo '```'
                   echo "$DIFF_OUTPUT"
@@ -198,16 +195,25 @@ jobs:
                   echo ""
                   echo "</details>"
                   echo ""
-                } >> /tmp/diff-comment.md
+                } >> /tmp/diff-body.md
               fi
             done
           done
 
-          if [ "$HAS_CHANGES" = "false" ]; then
-            echo "_No kustomize output changes detected._" >> /tmp/diff-comment.md
-          fi
+          {
+            echo "<!-- kustomize-diff -->"
+            echo "## Kustomize Diff"
+            echo ""
+            if [ "$CHANGED" -gt 0 ]; then
+              echo "**${CHANGED} of ${TOTAL} paths changed**"
+            else
+              echo "✅ No kustomize output changes detected across all ${TOTAL} paths."
+            fi
+            echo ""
+            cat /tmp/diff-body.md
+          } > /tmp/diff-comment.md
 
-          echo "has_changes=$HAS_CHANGES" >> "$GITHUB_OUTPUT"
+          echo "has_changes=$([ "$CHANGED" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
       - name: Find existing comment
         uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
