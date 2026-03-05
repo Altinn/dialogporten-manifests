@@ -186,13 +186,22 @@ jobs:
 
               if [ "$DIFF_EXIT" -ne 0 ]; then
                 CHANGED=$((CHANGED + 1))
-                DIFF_OUTPUT=$(diff --unified=9999 "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
+                SHORT_DIFF=$(diff --unified "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
+                FULL_DIFF=$(diff --unified=9999 "$base_file" "$pr_file" 2>&1 | tail -n +3) || true
                 {
                   echo "<details><summary>🔴 <code>${display}</code></summary>"
                   echo ""
                   echo '```diff'
-                  echo "$DIFF_OUTPUT"
+                  echo "$SHORT_DIFF"
                   echo '```'
+                  echo ""
+                  echo "<details><summary>Show full output</summary>"
+                  echo ""
+                  echo '```diff'
+                  echo "$FULL_DIFF"
+                  echo '```'
+                  echo ""
+                  echo "</details>"
                   echo ""
                   echo "</details>"
                   echo ""
