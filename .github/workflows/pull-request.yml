@@ -1,0 +1,245 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pull-request-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate kustomize
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Validate and build kustomize
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p kustomize-output
+
+          for dir in ./environments/*/; do
+            env=$(basename "$dir")
+            if [ ! -f "./environments/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./environments/${env}/kustomization.yaml"
+              exit 1
+            fi
+            if [ ! -f "./manifests/environments/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./manifests/environments/${env}/kustomization.yaml"
+              exit 1
+            fi
+            if [ ! -f "./flux-system/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./flux-system/${env}/kustomization.yaml"
+              exit 1
+            fi
+          done
+
+          for dir in ./manifests/apps/*/ ./manifests/jobs/*/; do
+            if [ ! -f "${dir}base/kustomization.yaml" ]; then
+              echo "Error: Missing ${dir}base/kustomization.yaml"
+              exit 1
+            fi
+          done
+
+          if grep -R --include='kustomization.yaml' -n 'patchesStrategicMerge' ./manifests/environments; then
+            echo "Error: Found deprecated patchesStrategicMerge usage."
+            exit 1
+          fi
+
+          build_kustomize() {
+            local path="$1"
+            local output_file="$2"
+            if command -v kustomize >/dev/null 2>&1; then
+              kustomize build "$path" > "$output_file"
+              return
+            fi
+            if command -v kubectl >/dev/null 2>&1; then
+              kubectl kustomize "$path" > "$output_file"
+              return
+            fi
+            echo "Error: Neither 'kustomize' nor 'kubectl' found in runner PATH."
+            exit 1
+          }
+
+          for dir in ./environments/*/; do
+            env=$(basename "$dir")
+            build_kustomize "./environments/${env}" "kustomize-output/environments-${env}.yaml"
+            build_kustomize "./flux/syncroot/${env}" "kustomize-output/flux-syncroot-${env}.yaml"
+            build_kustomize "./flux-system/${env}" "kustomize-output/flux-system-${env}.yaml"
+          done
+
+      - name: Upload kustomize output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kustomize-pr
+          path: kustomize-output/
+
+  build-base:
+    name: Build kustomize from main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          ref: main
+
+      - name: Build kustomize
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p kustomize-output
+
+          build_kustomize() {
+            local path="$1"
+            local output_file="$2"
+            if [ ! -d "$path" ]; then
+              touch "$output_file"
+              return
+            fi
+            if command -v kustomize >/dev/null 2>&1; then
+              kustomize build "$path" > "$output_file"
+              return
+            fi
+            if command -v kubectl >/dev/null 2>&1; then
+              kubectl kustomize "$path" > "$output_file"
+              return
+            fi
+            echo "Error: Neither 'kustomize' nor 'kubectl' found in runner PATH."
+            exit 1
+          }
+
+          for dir in ./environments/*/; do
+            env=$(basename "$dir")
+            build_kustomize "./environments/${env}" "kustomize-output/environments-${env}.yaml"
+            build_kustomize "./flux/syncroot/${env}" "kustomize-output/flux-syncroot-${env}.yaml"
+            build_kustomize "./flux-system/${env}" "kustomize-output/flux-system-${env}.yaml"
+          done
+
+      - name: Upload kustomize base output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kustomize-base
+          path: kustomize-output/
+
+  diff-comment:
+    name: Post kustomize diff comment
+    runs-on: ubuntu-latest
+    needs: [validate, build-base]
+    if: always() && needs.validate.result == 'success' && needs.build-base.result == 'success'
+    steps:
+      - name: Download PR kustomize output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: kustomize-pr
+          path: kustomize-pr/
+
+      - name: Download base kustomize output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: kustomize-base
+          path: kustomize-base/
+
+      - name: Install dyff
+        shell: bash
+        run: |
+          curl -fsSL -o dyff.tar.gz https://github.com/homeport/dyff/releases/download/v1.11.2/dyff_1.11.2_linux_amd64.tar.gz
+          echo "84e952f8ac40c8824de83d81261f9f6c5b984b5ff367eb08b688e0c1450a4f85  dyff.tar.gz" | sha256sum -c -
+          tar -xzf dyff.tar.gz -C /usr/local/bin dyff
+          rm dyff.tar.gz
+
+      - name: Generate diff comment
+        id: diff
+        shell: bash
+        run: |
+          CHANGED=0
+          TOTAL=0
+          > /tmp/diff-body.md
+
+          envs=$(
+            { ls kustomize-pr/environments-*.yaml 2>/dev/null; ls kustomize-base/environments-*.yaml 2>/dev/null; } \
+              | xargs -I{} basename {} .yaml | sed 's/^environments-//' | sort -u
+          )
+          while IFS= read -r env; do
+            [ -z "$env" ] && continue
+            for path_type in environments flux-syncroot flux-system; do
+              path_key="${path_type}-${env}"
+              TOTAL=$((TOTAL + 1))
+
+              case "$path_type" in
+                environments) display="environments/${env}" ;;
+                flux-syncroot) display="flux/syncroot/${env}" ;;
+                flux-system)   display="flux-system/${env}" ;;
+              esac
+
+              pr_file="kustomize-pr/${path_key}.yaml"
+              base_file="kustomize-base/${path_key}.yaml"
+
+              [ ! -f "$pr_file" ]   && pr_file="/dev/null"
+              [ ! -f "$base_file" ] && base_file="/dev/null"
+
+              dyff between --omit-header --set-exit-code "$base_file" "$pr_file" >/dev/null 2>&1 && DIFF_EXIT=0 || DIFF_EXIT=$?
+
+              if [ "$DIFF_EXIT" -ne 0 ]; then
+                CHANGED=$((CHANGED + 1))
+                SHORT_DIFF=$(diff --unified "$base_file" "$pr_file" 2>&1 | tail -n +3 | sed 's/```/` ` `/g') || true
+                FULL_DIFF=$(diff --unified=9999 "$base_file" "$pr_file" 2>&1 | tail -n +3 | sed 's/```/` ` `/g') || true
+                {
+                  echo "<details><summary>🔴 <code>${display}</code></summary>"
+                  echo ""
+                  echo '```diff'
+                  echo "$SHORT_DIFF"
+                  echo '```'
+                  echo ""
+                  echo "<details><summary>Show full output</summary>"
+                  echo ""
+                  echo '```diff'
+                  echo "$FULL_DIFF"
+                  echo '```'
+                  echo ""
+                  echo "</details>"
+                  echo ""
+                  echo "</details>"
+                  echo ""
+                } >> /tmp/diff-body.md
+              fi
+            done
+          done <<< "$envs"
+
+          {
+            echo "<!-- kustomize-diff -->"
+            echo "## Kustomize Diff"
+            echo ""
+            if [ "$CHANGED" -gt 0 ]; then
+              echo "**${CHANGED} of ${TOTAL} paths changed**"
+            else
+              echo "✅ No kustomize output changes detected across all ${TOTAL} paths."
+            fi
+            echo ""
+            cat /tmp/diff-body.md
+          } > /tmp/diff-comment.md
+
+          echo "has_changes=$([ "$CHANGED" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Find existing comment
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: "<!-- kustomize-diff -->"
+
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-file: /tmp/diff-comment.md
+          edit-mode: replace
