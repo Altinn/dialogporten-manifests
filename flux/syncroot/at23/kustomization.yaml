@@ -14,3 +14,19 @@ patches:
         namespace: dialogporten
       spec:
         path: ./flux-system/at23
+  - target:
+      kind: Alert
+      name: deploy-webhook
+    patch: |-
+      apiVersion: notification.toolkit.fluxcd.io/v1beta3
+      kind: Alert
+      metadata:
+        name: deploy-webhook
+        namespace: dialogporten
+      spec:
+        eventSources:
+          - kind: Kustomization
+            name: dialogporten-apps-at23
+        eventMetadata:
+          product: dialogporten
+          env: at23

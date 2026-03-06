@@ -1,0 +1,8 @@
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: deploy-webhook
+  namespace: dialogporten
+spec:
+  type: generic
+  address: https://TODO.replace-with-real-endpoint.example.com/flux-events

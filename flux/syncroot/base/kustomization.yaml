@@ -4,3 +4,5 @@ resources:
   - dialogporten-namespace.yaml
   - dialogporten-oci-repository.yaml
   - dialogporten-flux-kustomization.yaml
+  - deploy-webhook-provider.yaml
+  - deploy-webhook-alert.yaml
