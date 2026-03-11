@@ -11,6 +11,6 @@ patches:
       kind: Kustomization
       metadata:
         name: dialogporten
-        namespace: dialogporten
+        namespace: product-dialogporten
       spec:
         path: ./flux-system/prod

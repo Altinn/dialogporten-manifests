@@ -2,7 +2,7 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: dialogporten-apps-prod
-  namespace: dialogporten
+  namespace: product-dialogporten
 spec:
   interval: 10m0s
   path: ./environments/prod
@@ -10,4 +10,4 @@ spec:
   sourceRef:
     kind: OCIRepository
     name: dialogporten-manifests-prod
-  targetNamespace: dialogporten
+  targetNamespace: product-dialogporten
