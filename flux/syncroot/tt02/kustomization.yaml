@@ -5,12 +5,12 @@ resources:
 patches:
   - target:
       kind: Kustomization
-      name: dialogporten
+      name: dialogporten-apps
     patch: |-
       apiVersion: kustomize.toolkit.fluxcd.io/v1
       kind: Kustomization
       metadata:
-        name: dialogporten
+        name: dialogporten-apps
         namespace: product-dialogporten
       spec:
-        path: ./flux-system/tt02
+        path: ./environments/tt02
