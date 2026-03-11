@@ -42,7 +42,7 @@ jobs:
         uses: Altinn/altinn-platform/actions/flux/build-push-image@8d4e42eae11efbc3a159aa62fe15ed49954d9df9 # main
         with:
           image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
-          tag: main
+          tag: at22
           workdir: ./flux/syncroot
           azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
