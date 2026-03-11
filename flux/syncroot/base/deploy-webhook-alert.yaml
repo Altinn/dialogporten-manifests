@@ -1,0 +1,15 @@
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: deploy-webhook
+  namespace: dialogporten
+spec:
+  providerRef:
+    name: deploy-webhook
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: dialogporten-apps-at23 # patched per environment
+  eventMetadata:
+    product: dialogporten
+    env: at23 # patched per environment

@@ -14,3 +14,19 @@ patches:
         namespace: dialogporten
       spec:
         path: ./flux-system/yt01
+  - target:
+      kind: Alert
+      name: deploy-webhook
+    patch: |-
+      apiVersion: notification.toolkit.fluxcd.io/v1beta3
+      kind: Alert
+      metadata:
+        name: deploy-webhook
+        namespace: dialogporten
+      spec:
+        eventSources:
+          - kind: Kustomization
+            name: dialogporten-apps-yt01
+        eventMetadata:
+          product: dialogporten
+          env: yt01
