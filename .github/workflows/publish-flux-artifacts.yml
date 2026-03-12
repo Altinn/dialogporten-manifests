@@ -30,7 +30,7 @@ jobs:
       - name: Validate syncroot structure
         shell: bash
         run: |
-          for dir in ./environments/*/; do
+          for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
             if [ ! -f "./flux/syncroot/${env}/kustomization.yaml" ]; then
               echo "Error: Missing ./flux/syncroot/${env}/kustomization.yaml"
