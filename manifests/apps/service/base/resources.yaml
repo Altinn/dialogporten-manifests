@@ -5,8 +5,6 @@ metadata:
   labels:
     app.kubernetes.io/name: service
     app.kubernetes.io/part-of: dialogporten
-  annotations:
-    linkerd.io/inject: enabled
 spec:
   selector:
     matchLabels:
@@ -17,7 +15,9 @@ spec:
         app.kubernetes.io/name: service
         app.kubernetes.io/part-of: dialogporten
       annotations:
+        azure.workload.identity/use: "true"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        linkerd.io/inject: enabled
     spec:
       serviceAccountName: service
       containers:
