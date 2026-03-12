@@ -61,18 +61,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          for dir in ./environments/*/; do
+          for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
-            if [ ! -f "./environments/${env}/kustomization.yaml" ]; then
-              echo "Error: Missing ./environments/${env}/kustomization.yaml"
-              exit 1
-            fi
             if [ ! -f "./manifests/environments/${env}/kustomization.yaml" ]; then
               echo "Error: Missing ./manifests/environments/${env}/kustomization.yaml"
-              exit 1
-            fi
-            if [ ! -f "./flux-system/${env}/kustomization.yaml" ]; then
-              echo "Error: Missing ./flux-system/${env}/kustomization.yaml"
               exit 1
             fi
           done
@@ -108,11 +100,10 @@ jobs:
             exit 1
           }
 
-          for dir in ./environments/*/; do
+          for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
-            build_kustomize "./environments/${env}"
+            build_kustomize "./manifests/environments/${env}"
             build_kustomize "./flux/syncroot/${env}"
-            build_kustomize "./flux-system/${env}"
           done
 
       - name: Build and push app manifests artifact
@@ -120,7 +111,7 @@ jobs:
         with:
           image_name: ${{ env.APP_ARTIFACT_NAME }}
           tag: main
-          workdir: .
+          workdir: ./manifests
           azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
           azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}

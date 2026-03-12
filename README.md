@@ -7,16 +7,14 @@ This repository contains the Flux wiring and workload manifests for Dialogporten
 - `manifests/apps/<app>/base/`: canonical per-app base manifests (`web-api-eu`, `web-api-so`, `graphql`, `service`), aligned with job base layout (`manifests/jobs/<job>/base/`).
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays that only patch app bases.
 - `manifests/environments/<env>/kustomization.yaml`: concise env entrypoint that pulls all app/job overlays for that env and sets image tags.
-- `environments/<env>/`: thin wrapper kustomization that points Flux to the corresponding `manifests/environments/<env>` (keeps the old `clusters/<env>` path shape, now renamed).
-- `flux-system/<env>/`: Flux `OCIRepository` + `Kustomization` definitions that point Flux at `./environments/<env>` (which in turn includes `manifests/environments/<env>`) inside the OCI artifact.
 - `flux/syncroot/`: bootstrap wiring (namespace, `OCIRepository`, and a Kustomization that targets the chosen `flux-system/<env>` path).
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
 ## OCI flow (high level)
-1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot` and app manifests from the repository root.
-2. `flux-system/<env>/ocirepository.yaml` points to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
-3. Flux pulls that OCI artifact, and `dialogporten-apps-<env>` applies `environments/<env>` (which loads `manifests/environments/<env>`) directly (no `postBuild` substitutions).
+1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot` and app manifests from `manifests/`.
+2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
+3. Flux pulls that OCI artifact, and the environment-specific `Kustomization` in `flux/syncroot/<env>` targets the `./environments/<env>` path within the artifact.
 
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`.
 
