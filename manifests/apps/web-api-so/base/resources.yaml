@@ -95,33 +95,33 @@ metadata:
   labels:
     app.kubernetes.io/name: web-api-so
     app.kubernetes.io/part-of: dialogporten
-  spec:
-    parentRefs:
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: traefik-gateway
-      namespace: traefik   
-    rules:
-    - backendRefs:
-      - group: ""
-        kind: Service
-        name: web-api-so
-        port: 80
-      filters:
-      - requestHeaderModifier:
-          set:
-          - name: l5d-dst-override
-            value: web-api-so.product-dialogporten.svc.cluster.local:80
-        type: RequestHeaderModifier
-      - type: ExtensionRef
-        extensionRef:
-          group: traefik.io
-          kind: Middleware
-          name: web-api-so-ip-allowlist
-      matches:
-      - path:
-          type: PathPrefix
-          value: /dialogporten
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: traefik-gateway
+    namespace: traefik   
+  rules:
+  - backendRefs:
+    - group: ""
+      kind: Service
+      name: web-api-so
+      port: 80
+    filters:
+    - requestHeaderModifier:
+        set:
+        - name: l5d-dst-override
+          value: web-api-so.product-dialogporten.svc.cluster.local:80
+      type: RequestHeaderModifier
+    - type: ExtensionRef
+      extensionRef:
+        group: traefik.io
+        kind: Middleware
+        name: web-api-so-ip-allowlist
+    matches:
+    - path:
+        type: PathPrefix
+        value: /dialogporten
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
