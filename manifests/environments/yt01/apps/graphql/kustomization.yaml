@@ -6,3 +6,4 @@ patches:
   - path: allowlist.yaml
   - path: deployment-env.yaml
   - path: deployment-resources.yaml
+  - path: ingress-hostname.yaml
