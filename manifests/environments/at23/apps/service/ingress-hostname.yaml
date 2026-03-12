@@ -4,4 +4,4 @@ metadata:
   name: service
 spec:
   hostnames:
-    - dialogporten.at23.dis-core.altinn.cloud
+    - dialogporten.at22.dis-core.altinn.cloud
