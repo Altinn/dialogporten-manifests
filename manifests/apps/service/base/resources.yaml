@@ -5,6 +5,8 @@ metadata:
   labels:
     app.kubernetes.io/name: service
     app.kubernetes.io/part-of: dialogporten
+  annotations:
+    linkerd.io/inject: enabled
 spec:
   selector:
     matchLabels:
@@ -14,6 +16,8 @@ spec:
       labels:
         app.kubernetes.io/name: service
         app.kubernetes.io/part-of: dialogporten
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     spec:
       serviceAccountName: service
       containers:
@@ -84,22 +88,40 @@ spec:
       port: 80
       targetPort: 8080
 ---
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: service
   labels:
     app.kubernetes.io/name: service
     app.kubernetes.io/part-of: dialogporten
-spec:
-  routes:
-    - match: PathPrefix(`/dialogporten/service`)
-      priority: 5
-      middlewares:
-        - name: service-ip-allowlist
-      services:
-        - name: service
-          port: 80
+  spec:
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: traefik-gateway
+      namespace: traefik   
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: service
+        port: 80
+      filters:
+      - requestHeaderModifier:
+          set:
+          - name: l5d-dst-override
+            value: service.product-dialogporten.svc.cluster.local:80
+        type: RequestHeaderModifier
+      - type: ExtensionRef
+        extensionRef:
+          group: traefik.io
+          kind: Middleware
+          name: service-ip-allowlist
+      matches:
+      - path:
+          type: PathPrefix
+          value: /dialogporten/service
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware

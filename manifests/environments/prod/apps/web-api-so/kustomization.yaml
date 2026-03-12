@@ -7,3 +7,4 @@ patches:
   - path: deployment-env.yaml
   - path: deployment-resources.yaml
   - path: hpa-min.yaml
+  - path: ingress-hostname.yaml
