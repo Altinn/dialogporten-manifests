@@ -37,6 +37,10 @@ spec:
                 secretKeyRef:
                   name: graphql-secrets
                   key: dialogportenRedisConnectionString
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.monitoring.svc.cluster.local:4317
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: grpc
 ---
 apiVersion: v1
 kind: ConfigMap

@@ -48,3 +48,7 @@ spec:
                   value: costmetrics
                 - name: MetricsAggregation__SubscriptionId
                   value: ${DIALOGPORTEN_AZURE_SUBSCRIPTION_ID}
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: http://otel-collector.monitoring.svc.cluster.local:4317
+                - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: grpc

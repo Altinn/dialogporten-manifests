@@ -49,3 +49,7 @@ spec:
                   value: set-by-env
                 - name: APPLICATIONINSIGHTS_CONNECTION_STRING
                   value: ${DIALOGPORTEN_APPINSIGHTS_CONNECTION_STRING}
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: http://otel-collector.monitoring.svc.cluster.local:4317
+                - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: grpc
