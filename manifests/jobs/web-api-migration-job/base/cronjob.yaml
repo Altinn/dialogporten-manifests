@@ -38,3 +38,22 @@ spec:
                   value: http://otel-collector.monitoring.svc.cluster.local:4317
                 - name: OTEL_EXPORTER_OTLP_PROTOCOL
                   value: grpc
+                - name: OTEL_SERVICE_NAME
+                  value: dialogporten-web-api-migration-job
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.name
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.namespace
+                - name: POD_UID
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.uid
+                - name: OTEL_RESOURCE_ATTRIBUTES
+                  value: "k8s.pod.uid=$(POD_UID)"
