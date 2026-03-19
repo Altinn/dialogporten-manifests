@@ -11,11 +11,25 @@ patches:
         path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten
   - target:
+      kind: Api
+      name: dialogporten-web-api-so
+    patch: |
+      - op: replace
+        path: /spec/versions/0/serviceUrl
+        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten
+  - target:
       kind: Backend
       name: dialogporten-web-api-eu
     patch: |
       - op: replace
         path: /spec/url
+        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/enduser
+  - target:
+      kind: Api
+      name: dialogporten-web-api-eu
+    patch: |
+      - op: replace
+        path: /spec/versions/0/serviceUrl
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/enduser
   - target:
       kind: Backend
@@ -25,6 +39,13 @@ patches:
         path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/service
   - target:
+      kind: Api
+      name: dialogporten-service
+    patch: |
+      - op: replace
+        path: /spec/versions/0/serviceUrl
+        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/service
+  - target:
       kind: Backend
       name: dialogporten-graphql
     patch: |
@@ -32,9 +53,23 @@ patches:
         path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/graphql
   - target:
+      kind: Api
+      name: dialogporten-graphql
+    patch: |
+      - op: replace
+        path: /spec/versions/0/serviceUrl
+        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/graphql
+  - target:
       kind: Backend
       name: dialogporten-serviceowner
     patch: |
       - op: replace
         path: /spec/url
+        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/serviceowner
+  - target:
+      kind: Api
+      name: dialogporten-serviceowner
+    patch: |
+      - op: replace
+        path: /spec/versions/0/serviceUrl
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/serviceowner
