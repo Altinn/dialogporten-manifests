@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - web-api-so.yaml
+  - web-api-eu.yaml
+  - service.yaml
+  - graphql.yaml
+  - serviceowner.yaml
