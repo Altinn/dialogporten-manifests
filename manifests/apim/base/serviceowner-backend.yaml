@@ -1,0 +1,8 @@
+apiVersion: apim.dis.altinn.cloud/v1alpha1
+kind: Backend
+metadata:
+  name: dialogporten-serviceowner
+spec:
+  title: dialogporten-serviceowner
+  description: Dialogporten Service Owner API
+  url: set-by-env

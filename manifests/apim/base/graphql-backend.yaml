@@ -1,0 +1,8 @@
+apiVersion: apim.dis.altinn.cloud/v1alpha1
+kind: Backend
+metadata:
+  name: dialogporten-graphql
+spec:
+  title: dialogporten-graphql
+  description: Dialogporten GraphQL API
+  url: set-by-env
