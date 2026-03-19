@@ -30,4 +30,4 @@ spec:
         }
       }
     }
-  serviceUrl: set-by-env
+  backendId: dialogporten-web-api-eu

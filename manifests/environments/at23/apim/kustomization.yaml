@@ -4,37 +4,37 @@ resources:
   - ../../../apim/base
 patches:
   - target:
-      kind: Api
+      kind: Backend
       name: dialogporten-web-api-so
     patch: |
       - op: replace
-        path: /spec/serviceUrl
+        path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten
   - target:
-      kind: Api
+      kind: Backend
       name: dialogporten-web-api-eu
     patch: |
       - op: replace
-        path: /spec/serviceUrl
+        path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/enduser
   - target:
-      kind: Api
+      kind: Backend
       name: dialogporten-service
     patch: |
       - op: replace
-        path: /spec/serviceUrl
+        path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/service
   - target:
-      kind: Api
+      kind: Backend
       name: dialogporten-graphql
     patch: |
       - op: replace
-        path: /spec/serviceUrl
+        path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/graphql
   - target:
-      kind: Api
+      kind: Backend
       name: dialogporten-serviceowner
     patch: |
       - op: replace
-        path: /spec/serviceUrl
+        path: /spec/url
         value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/serviceowner

@@ -1,0 +1,8 @@
+apiVersion: apim.dis.altinn.cloud/v1alpha1
+kind: Backend
+metadata:
+  name: dialogporten-web-api-eu
+spec:
+  title: dialogporten-web-api-eu
+  description: Dialogporten End User Web API
+  url: set-by-env
