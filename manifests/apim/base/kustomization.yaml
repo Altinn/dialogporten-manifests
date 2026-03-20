@@ -3,11 +3,7 @@ kind: Kustomization
 resources:
   - web-api-so.yaml
   - web-api-eu.yaml
-  - service.yaml
   - graphql.yaml
-  - serviceowner.yaml
   - web-api-so-backend.yaml
   - web-api-eu-backend.yaml
-  - service-backend.yaml
   - graphql-backend.yaml
-  - serviceowner-backend.yaml
