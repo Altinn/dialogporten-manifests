@@ -11,7 +11,7 @@ spec:
   path: dialogporten
   apiType: http
   versions:
-    - displayName: Version 1
+    - displayName: Dialogporten Web API SO v1
       isCurrent: true
       subscriptionRequired: false
       protocols:

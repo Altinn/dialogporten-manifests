@@ -11,7 +11,7 @@ spec:
   path: dialogporten/graphql
   apiType: http
   versions:
-    - displayName: Version 1
+    - displayName: Dialogporten GraphQL v1
       isCurrent: true
       subscriptionRequired: false
       protocols:
