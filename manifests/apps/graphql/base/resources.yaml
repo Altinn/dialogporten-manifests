@@ -124,27 +124,10 @@ spec:
         - name: l5d-dst-override
           value: graphql.product-dialogporten.svc.cluster.local:80
       type: RequestHeaderModifier
-    - type: ExtensionRef
-      extensionRef:
-        group: traefik.io
-        kind: Middleware
-        name: graphql-ip-allowlist
     matches:
     - path:
         type: PathPrefix
         value: /dialogporten/graphql
----
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: graphql-ip-allowlist
-  labels:
-    app.kubernetes.io/name: graphql
-    app.kubernetes.io/part-of: dialogporten
-spec:
-  ipAllowList:
-    sourceRange:
-      - 0.0.0.0/32
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

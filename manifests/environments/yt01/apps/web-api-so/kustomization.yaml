@@ -3,7 +3,6 @@ kind: Kustomization
 resources:
   - ../../../../apps/web-api-so/base
 patches:
-  - path: allowlist.yaml
   - path: deployment-env.yaml
   - path: deployment-resources.yaml
   - path: ingress-hostname.yaml
