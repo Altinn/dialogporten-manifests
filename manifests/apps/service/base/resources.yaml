@@ -126,27 +126,10 @@ spec:
         - name: l5d-dst-override
           value: service.product-dialogporten.svc.cluster.local:80
       type: RequestHeaderModifier
-    - type: ExtensionRef
-      extensionRef:
-        group: traefik.io
-        kind: Middleware
-        name: service-ip-allowlist
     matches:
     - path:
         type: PathPrefix
         value: /dialogporten/service
----
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: service-ip-allowlist
-  labels:
-    app.kubernetes.io/name: service
-    app.kubernetes.io/part-of: dialogporten
-spec:
-  ipAllowList:
-    sourceRange:
-      - 0.0.0.0/32
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
