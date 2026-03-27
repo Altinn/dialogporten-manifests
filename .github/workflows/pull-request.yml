@@ -46,7 +46,7 @@ jobs:
           fi
 
   kustomize-diff:
-    uses: dis-way/actions/.github/workflows/kustomize-diff.yml@main
+    uses: dis-way/actions/.github/workflows/kustomize-diff.yml@87a3c5e6a95eb24448d8bf4884ea2fcd9b9c0ced # main
     with:
       build-paths: "manifests/environments/*,flux/syncroot/*"
     permissions:
