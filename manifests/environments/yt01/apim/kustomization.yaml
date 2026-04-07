@@ -9,39 +9,39 @@ patches:
     patch: |
       - op: replace
         path: /spec/url
-        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten
+        value: https://dialogporten.yt01.dis-core.altinn.cloud/dialogporten
   - target:
       kind: Api
       name: dialogporten-web-api-so
     patch: |
       - op: replace
         path: /spec/versions/0/serviceUrl
-        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten
+        value: https://dialogporten.yt01.dis-core.altinn.cloud/dialogporten
   - target:
       kind: Backend
       name: dialogporten-web-api-eu
     patch: |
       - op: replace
         path: /spec/url
-        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/enduser
+        value: https://dialogporten.yt01.dis-core.altinn.cloud/dialogporten/enduser
   - target:
       kind: Api
       name: dialogporten-web-api-eu
     patch: |
       - op: replace
         path: /spec/versions/0/serviceUrl
-        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/enduser
+        value: https://dialogporten.yt01.dis-core.altinn.cloud/dialogporten/enduser
   - target:
       kind: Backend
       name: dialogporten-graphql
     patch: |
       - op: replace
         path: /spec/url
-        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/graphql
+        value: https://dialogporten.yt01.dis-core.altinn.cloud/dialogporten/graphql
   - target:
       kind: Api
       name: dialogporten-graphql
     patch: |
       - op: replace
         path: /spec/versions/0/serviceUrl
-        value: https://dialogporten.at22.dis-core.altinn.cloud/dialogporten/graphql
+        value: https://dialogporten.yt01.dis-core.altinn.cloud/dialogporten/graphql

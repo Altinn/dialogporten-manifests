@@ -119,6 +119,11 @@ spec:
       name: graphql
       port: 80
     filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /graphql
     - requestHeaderModifier:
         set:
         - name: l5d-dst-override

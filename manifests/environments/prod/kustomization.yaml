@@ -5,6 +5,7 @@ resources:
   - ../../common/base
   - apps
   - jobs
+  - apim
 patches:
   - path: secretstore-vault-url.yaml
 images:
