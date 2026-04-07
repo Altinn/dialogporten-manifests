@@ -39,14 +39,41 @@ spec:
           - name: backendID
             idFromBackend:
               name: dialogporten-graphql
+          - name: maintenanceEnabled
+            value: "false"
+          - name: maintenanceBypassKey
+            value: ""
         policyContent: |
           <policies>
               <inbound>
                   <set-backend-service backend-id="{{.backendID}}" />
+                  <choose>
+                      <when condition="@(context.Variables.GetValueOrDefault&lt;string&gt;(&quot;maintenanceMode&quot;, &quot;{{.maintenanceEnabled}}&quot;) == &quot;true&quot;)">
+                          <set-variable name="bypassKey" value="{{.maintenanceBypassKey}}" />
+                          <set-variable name="bypassHeader" value="@(context.Request.Headers.GetValueOrDefault(&quot;x-dialogporten-maintenance-bypass&quot;, &quot;&quot;))" />
+                          <choose>
+                              <when condition="@(context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassKey&quot;) != &quot;&quot; &amp;&amp; context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassHeader&quot;) != &quot;&quot; &amp;&amp; context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassKey&quot;) == context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassHeader&quot;))">
+                                  <set-header name="x-dialogporten-maintenance-bypass" exists-action="delete" />
+                              </when>
+                              <otherwise>
+                                  <return-response>
+                                      <set-status code="503" reason="Service Unavailable" />
+                                      <set-header name="Content-Type" exists-action="override">
+                                          <value>application/json</value>
+                                      </set-header>
+                                      <set-header name="Retry-After" exists-action="override">
+                                          <value>300</value>
+                                      </set-header>
+                                      <set-body>{"error": "Service temporarily unavailable for maintenance. Please try again later."}</set-body>
+                                  </return-response>
+                              </otherwise>
+                          </choose>
+                      </when>
+                  </choose>
                   <base />
               </inbound>
               <backend>
-                  <base />
+                  <forward-request timeout="120" buffer-request-body="true" buffer-response="false" fail-on-error-status-code="true" />
               </backend>
               <outbound>
                   <base />
