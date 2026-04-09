@@ -4,6 +4,9 @@ on:
   repository_dispatch:
     types: [update_all_image_tags]
 
+permissions:
+  contents: write
+
 concurrency:
   group: update-manifests-${{ github.event.client_payload.environment }}
   cancel-in-progress: false
