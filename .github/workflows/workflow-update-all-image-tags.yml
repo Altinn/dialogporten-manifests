@@ -1,0 +1,90 @@
+name: Update all image tags
+
+on:
+  repository_dispatch:
+    types: [update_all_image_tags]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-manifests-${{ github.event.client_payload.environment }}
+  cancel-in-progress: false
+
+jobs:
+  update-tags:
+    name: Update image tags for ${{ github.event.client_payload.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate inputs
+        env:
+          ENVIRONMENT: ${{ github.event.client_payload.environment }}
+          IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
+        run: |
+          # Validate environment
+          case "$ENVIRONMENT" in
+            yt01|tt02|at23|prod) ;;
+            *) echo "::error::Invalid environment: $ENVIRONMENT (must be yt01, tt02, at23, or prod)"; exit 1 ;;
+          esac
+
+          # Validate image_tag format: semver with optional SHA suffix (e.g., 1.2.3 or 1.2.3-abc1234)
+          if [[ ! "$IMAGE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "::error::Invalid image_tag format: $IMAGE_TAG (must match semver with optional SHA suffix, e.g., 1.2.3 or 1.2.3-abc1234)"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        uses: mikefarah/yq@3b2423e8713e34e93ee68ddc253cea8d040b48ae # master
+
+      - name: Update image tags
+        env:
+          ENVIRONMENT: ${{ github.event.client_payload.environment }}
+          IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
+        run: |
+          FILE="manifests/environments/${ENVIRONMENT}/kustomization.yaml"
+
+          if [ ! -f "$FILE" ]; then
+            echo "::error::File not found: $FILE"
+            exit 1
+          fi
+
+          yq -i '(.images[].newTag) = strenv(IMAGE_TAG)' "$FILE"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes detected, skipping commit."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          ENVIRONMENT: ${{ github.event.client_payload.environment }}
+          IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: update image tags to ${IMAGE_TAG} for ${ENVIRONMENT}"
+
+          # Retry push with rebase up to 3 times to handle concurrent pushes
+          for attempt in 1 2 3; do
+            echo "Push attempt $attempt..."
+            if git push; then
+              echo "Push succeeded on attempt $attempt."
+              exit 0
+            fi
+            echo "Push failed, pulling with rebase and retrying..."
+            git pull --rebase
+            sleep $((attempt * 2))
+          done
+
+          echo "::error::Failed to push after 3 attempts"
+          exit 1
