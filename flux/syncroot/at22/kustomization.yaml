@@ -13,4 +13,4 @@ patches:
         name: dialogporten-apps
         namespace: product-dialogporten
       spec:
-        path: ./environments/at23
+        path: ./environments/at22
