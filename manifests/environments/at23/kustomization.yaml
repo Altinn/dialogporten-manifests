@@ -10,12 +10,12 @@ patches:
   - path: secretstore-vault-url.yaml
 images:
   - name: ghcr.io/altinn/dialogporten-webapi
-    newTag: 1.114.5-9af24d6
+    newTag: 1.114.5-4d9cfea
   - name: ghcr.io/altinn/dialogporten-graphql
-    newTag: 1.114.5-9af24d6
+    newTag: 1.114.5-4d9cfea
   - name: ghcr.io/altinn/dialogporten-service
-    newTag: 1.114.5-9af24d6
+    newTag: 1.114.5-4d9cfea
   - name: ghcr.io/altinn/dialogporten-migration-bundle
-    newTag: 1.114.5-9af24d6
+    newTag: 1.114.5-4d9cfea
   - name: ghcr.io/altinn/dialogporten-janitor
-    newTag: 1.114.5-9af24d6
+    newTag: 1.114.5-4d9cfea
