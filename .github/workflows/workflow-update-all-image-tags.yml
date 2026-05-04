@@ -23,8 +23,8 @@ jobs:
         run: |
           # Validate environment
           case "$ENVIRONMENT" in
-            yt01|tt02|at23|prod) ;;
-            *) echo "::error::Invalid environment: $ENVIRONMENT (must be yt01, tt02, at23, or prod)"; exit 1 ;;
+            yt01|tt02|at22|at23|prod) ;;
+            *) echo "::error::Invalid environment: $ENVIRONMENT (must be yt01, tt02, at22, at23, or prod)"; exit 1 ;;
           esac
 
           # Validate image_tag format: semver with optional SHA suffix (e.g., 1.2.3 or 1.2.3-abc1234)
