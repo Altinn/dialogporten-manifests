@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql
+spec:
+  template:
+    spec:
+      containers:
+        - name: graphql
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: test
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: "1"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: graphql-runtime
+  labels:
+    app.kubernetes.io/instance: at22
+data:
+  AZURE_APPCONFIG_URI: https://dp-be-test-appconfiguration-i7se3jtjey3lo.azconfig.io
+  DIALOGPORTEN_ENVIRONMENT: test
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: graphql-secrets
+  labels:
+    app.kubernetes.io/instance: at22
