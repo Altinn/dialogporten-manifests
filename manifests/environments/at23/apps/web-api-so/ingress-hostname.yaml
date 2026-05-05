@@ -4,4 +4,4 @@ metadata:
   name: web-api-so
 spec:
   hostnames:
-    - dialogporten.at22.dis-core.altinn.cloud
+    - dialogporten.at23.dis-core.altinn.cloud
