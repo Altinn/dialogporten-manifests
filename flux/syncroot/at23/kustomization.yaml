@@ -5,15 +5,15 @@ resources:
 patches:
   - target:
       kind: Kustomization
-      name: dialogporten
+      name: dialogporten-apps
     patch: |-
       apiVersion: kustomize.toolkit.fluxcd.io/v1
       kind: Kustomization
       metadata:
-        name: dialogporten
-        namespace: dialogporten
+        name: dialogporten-apps
+        namespace: product-dialogporten
       spec:
-        path: ./flux-system/at23
+        path: ./environments/at23
   - target:
       kind: Alert
       name: deploy-webhook

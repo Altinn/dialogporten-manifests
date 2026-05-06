@@ -1,0 +1,65 @@
+apiVersion: policy.linkerd.io/v1beta2
+kind: Server
+metadata:
+  name: dialogporten-http
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: dialogporten
+  port: 8080
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: dialogporten-mesh-authn
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  identities:
+    - "*"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: dialogporten-network-authn
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  networks:
+    - cidr: 0.0.0.0/0
+    - cidr: ::/0
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: dialogporten-allow-meshed
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: dialogporten-http
+  requiredAuthenticationRefs:
+    - group: policy.linkerd.io
+      kind: MeshTLSAuthentication
+      name: dialogporten-mesh-authn
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: dialogporten-allow-network
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: dialogporten-http
+  requiredAuthenticationRefs:
+    - group: policy.linkerd.io
+      kind: NetworkAuthentication
+      name: dialogporten-network-authn

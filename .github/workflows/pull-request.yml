@@ -1,0 +1,54 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pull-request-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate kustomize
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Validate kustomize structure
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for dir in ./manifests/environments/*/; do
+            env=$(basename "$dir")
+            if [ ! -f "./manifests/environments/${env}/kustomization.yaml" ]; then
+              echo "Error: Missing ./manifests/environments/${env}/kustomization.yaml"
+              exit 1
+            fi
+          done
+
+          for dir in ./manifests/apps/*/ ./manifests/jobs/*/; do
+            if [ ! -f "${dir}base/kustomization.yaml" ]; then
+              echo "Error: Missing ${dir}base/kustomization.yaml"
+              exit 1
+            fi
+          done
+
+          if grep -R --include='kustomization.yaml' -n 'patchesStrategicMerge' ./manifests/environments; then
+            echo "Error: Found deprecated patchesStrategicMerge usage."
+            exit 1
+          fi
+
+  kustomize-diff:
+    uses: dis-way/actions/.github/workflows/kustomize-diff.yml@3042b24339145361ecee9843a0a3acb5ce3ca9fd # main
+    with:
+      build-paths: "manifests/environments/*,flux/syncroot/*"
+    permissions:
+      contents: read
+      pull-requests: write

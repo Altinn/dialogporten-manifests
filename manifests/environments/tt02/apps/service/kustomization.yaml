@@ -4,3 +4,4 @@ resources:
   - ../../../../apps/service/base
 patches:
   - path: deployment-env.yaml
+  - path: ingress-hostname.yaml

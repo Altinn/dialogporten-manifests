@@ -14,6 +14,10 @@ spec:
       labels:
         app.kubernetes.io/name: service
         app.kubernetes.io/part-of: dialogporten
+        azure.workload.identity/use: "true"
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        linkerd.io/inject: enabled
     spec:
       serviceAccountName: service
       containers:
@@ -35,6 +39,19 @@ spec:
                 secretKeyRef:
                   name: service-secrets
                   key: dialogportenRedisConnectionString
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.monitoring.svc.cluster.local:4317
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: grpc
+            - name: OTEL_SERVICE_NAME
+              value: dialogporten-service
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.uid
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "k8s.pod.uid=$(POD_UID)"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -84,34 +101,35 @@ spec:
       port: 80
       targetPort: 8080
 ---
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: service
   labels:
     app.kubernetes.io/name: service
     app.kubernetes.io/part-of: dialogporten
 spec:
-  routes:
-    - match: PathPrefix(`/dialogporten/service`)
-      priority: 5
-      middlewares:
-        - name: service-ip-allowlist
-      services:
-        - name: service
-          port: 80
----
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: service-ip-allowlist
-  labels:
-    app.kubernetes.io/name: service
-    app.kubernetes.io/part-of: dialogporten
-spec:
-  ipAllowList:
-    sourceRange:
-      - 0.0.0.0/32
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: traefik-gateway
+    namespace: traefik   
+  rules:
+  - backendRefs:
+    - group: ""
+      kind: Service
+      name: service
+      port: 80
+    filters:
+    - requestHeaderModifier:
+        set:
+        - name: l5d-dst-override
+          value: service.product-dialogporten.svc.cluster.local:80
+      type: RequestHeaderModifier
+    matches:
+    - path:
+        type: PathPrefix
+        value: /dialogporten/service
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
