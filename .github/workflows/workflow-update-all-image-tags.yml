@@ -44,14 +44,18 @@ jobs:
           ENVIRONMENT: ${{ github.event.client_payload.environment }}
           IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
         run: |
-          FILE="manifests/environments/${ENVIRONMENT}/kustomization.yaml"
+          FILES=(
+            "manifests/environments/${ENVIRONMENT}/kustomization.yaml"
+            "manifests/environments/${ENVIRONMENT}/migration/kustomization.yaml"
+          )
 
-          if [ ! -f "$FILE" ]; then
-            echo "::error::File not found: $FILE"
-            exit 1
-          fi
-
-          yq -i '(.images[].newTag) = strenv(IMAGE_TAG)' "$FILE"
+          for FILE in "${FILES[@]}"; do
+            if [ ! -f "$FILE" ]; then
+              echo "::error::File not found: $FILE"
+              exit 1
+            fi
+            yq -i '(.images[].newTag) = strenv(IMAGE_TAG)' "$FILE"
+          done
 
       - name: Check for changes
         id: changes

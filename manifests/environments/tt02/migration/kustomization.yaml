@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: product-dialogporten
+resources:
+  - ../jobs/web-api-migration-job
+images:
+  - name: ghcr.io/altinn/dialogporten-migration-bundle
+    newTag: 1.115.1

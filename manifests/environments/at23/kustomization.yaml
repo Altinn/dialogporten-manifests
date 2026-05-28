@@ -15,7 +15,5 @@ images:
     newTag: 1.115.1-a29ddc2
   - name: ghcr.io/altinn/dialogporten-service
     newTag: 1.115.1-a29ddc2
-  - name: ghcr.io/altinn/dialogporten-migration-bundle
-    newTag: 1.115.1-a29ddc2
   - name: ghcr.io/altinn/dialogporten-janitor
     newTag: 1.115.1-a29ddc2
