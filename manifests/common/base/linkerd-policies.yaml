@@ -1,4 +1,18 @@
-apiVersion: policy.linkerd.io/v1beta2
+# Linkerd inbound authorization for dialogporten pods (port 8080).
+#
+# The cluster runs `defaultInboundPolicy: deny`, so this Server's port is
+# default-deny: only the identities listed below may reach it. Access is
+# granted purely by mesh (mTLS) identity — there is intentionally no
+# NetworkAuthentication, so unmeshed/plaintext traffic is rejected.
+#
+# Not authorized here (and that's correct):
+#   - The Azure load balancer terminates at traefik, not at dialogporten
+#     (all services are ClusterIP), so ingress arrives with traefik's identity.
+#   - Telemetry is push-based (OTLP -> otel-collector), so nothing scrapes 8080.
+#   - The pods define no liveness/readiness probes, so the kubelet does not
+#     probe 8080. If probes are added later, authorize the probe path to the
+#     node subnet (a `kubelet` NetworkAuthentication), per the whoami pattern.
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   name: dialogporten-http
@@ -19,18 +33,12 @@ metadata:
     app.kubernetes.io/part-of: dialogporten
 spec:
   identities:
-    - "*"
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: NetworkAuthentication
-metadata:
-  name: dialogporten-network-authn
-  labels:
-    app.kubernetes.io/part-of: dialogporten
-spec:
-  networks:
-    - cidr: 0.0.0.0/0
-    - cidr: ::/0
+    # Internal dialogporten components (graphql, service, web-api-eu, web-api-so).
+    - "*.product-dialogporten.serviceaccount.identity.linkerd.cluster.local"
+    # Arbeidsflate BFF.
+    - "bff.product-arbeidsflate.serviceaccount.identity.linkerd.cluster.local"
+    # Ingress — covers all external traffic, which reaches us via traefik.
+    - "altinn-traefik.traefik.serviceaccount.identity.linkerd.cluster.local"
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
@@ -47,19 +55,3 @@ spec:
     - group: policy.linkerd.io
       kind: MeshTLSAuthentication
       name: dialogporten-mesh-authn
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  name: dialogporten-allow-network
-  labels:
-    app.kubernetes.io/part-of: dialogporten
-spec:
-  targetRef:
-    group: policy.linkerd.io
-    kind: Server
-    name: dialogporten-http
-  requiredAuthenticationRefs:
-    - group: policy.linkerd.io
-      kind: NetworkAuthentication
-      name: dialogporten-network-authn
