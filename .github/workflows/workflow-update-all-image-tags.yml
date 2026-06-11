@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install yq
-        uses: mikefarah/yq@cb9793555487aafb501e1a9d85c28b812aeadfab # master
+        uses: mikefarah/yq@5cf0adcc5b1f05537c68234dba216e9a0882a705 # master
 
       - name: Update image tags
         env:
