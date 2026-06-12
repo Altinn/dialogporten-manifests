@@ -1,16 +1,17 @@
 # Linkerd inbound authorization for dialogporten pods (port 8080).
 #
-# The cluster runs `defaultInboundPolicy: deny`, so this Server's port is
-# default-deny. Two ways in are authorized:
-#   1. Mesh (mTLS) identity — internal dialogporten components, the arbeidsflate
-#      BFF, and traefik ingress. This is how all real traffic arrives; the Azure
-#      load balancer terminates at traefik (services are ClusterIP) and telemetry
-#      is push-based (OTLP -> otel-collector), so nothing else reaches 8080 meshed.
-#   2. The kubelet, for the liveness/readiness/startup probes (/health/*) which
-#      hit 8080 directly and are unmeshed. Scoped to the node subnet — on dis-core
-#      clusters the nodes live in 10.205.0.0/16 (+ fd12:2291:d70a::/48),
-#      deliberately NOT the pod subnet (10.240.0.0/16 / fd10:…), so pods cannot
-#      bypass mesh auth via the network rule.
+# defaultInboundPolicy is deny, so :8080 is default-deny. Access is scoped per
+# HTTP route, so the kubelet reaches only health — never the application paths:
+#   - "/"        -> mesh (mTLS) identity: internal dialogporten components, the
+#                   arbeidsflate BFF, and traefik ingress. This is all real traffic.
+#   - "/health"  -> the kubelet, for the liveness/readiness/startup probes, which
+#                   hit :8080 unmeshed from the node. Scoping to the health route
+#                   keeps node-sourced traffic off the API surface.
+#
+# Defining HTTPRoutes replaces the Server's default catch-all, so "/" is an
+# explicit catch-all (every non-health request matches it). Node subnet on
+# dis-core clusters is 10.205.0.0/16 (+ fd12:2291:d70a::/48), verified on
+# at22/at23 — deliberately not the pod subnet (10.240.0.0/16).
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
@@ -40,6 +41,54 @@ spec:
     - "altinn-traefik.traefik.serviceaccount.identity.linkerd.cluster.local"
 ---
 apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: dialogporten-kubelet
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  # Node subnet (kubelet source) — excludes the pod subnet (10.240.0.0/16).
+  networks:
+    - cidr: 10.205.0.0/16
+    - cidr: fd12:2291:d70a::/48
+---
+# Catch-all route: all non-health traffic, authorized by mesh identity below.
+apiVersion: policy.linkerd.io/v1beta3
+kind: HTTPRoute
+metadata:
+  name: dialogporten-app
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  parentRefs:
+    - group: policy.linkerd.io
+      kind: Server
+      name: dialogporten-http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+---
+# Health route: liveness/readiness/startup probes, authorized for the kubelet below.
+apiVersion: policy.linkerd.io/v1beta3
+kind: HTTPRoute
+metadata:
+  name: dialogporten-health
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  parentRefs:
+    - group: policy.linkerd.io
+      kind: Server
+      name: dialogporten-http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /health
+---
+apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   name: dialogporten-allow-meshed
@@ -48,24 +97,12 @@ metadata:
 spec:
   targetRef:
     group: policy.linkerd.io
-    kind: Server
-    name: dialogporten-http
+    kind: HTTPRoute
+    name: dialogporten-app
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: MeshTLSAuthentication
       name: dialogporten-mesh-authn
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: NetworkAuthentication
-metadata:
-  name: dialogporten-kubelet
-  labels:
-    app.kubernetes.io/part-of: dialogporten
-spec:
-  # Node subnet (kubelet source) for health probes — excludes the pod subnet.
-  networks:
-    - cidr: 10.205.0.0/16
-    - cidr: fd12:2291:d70a::/48
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
@@ -76,8 +113,8 @@ metadata:
 spec:
   targetRef:
     group: policy.linkerd.io
-    kind: Server
-    name: dialogporten-http
+    kind: HTTPRoute
+    name: dialogporten-health
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: NetworkAuthentication
