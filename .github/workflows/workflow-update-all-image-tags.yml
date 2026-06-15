@@ -14,7 +14,7 @@ concurrency:
 jobs:
   update-tags:
     name: Update image tags for ${{ github.event.client_payload.environment }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Validate inputs
         env:
@@ -37,7 +37,35 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install yq
-        uses: mikefarah/yq@cb9793555487aafb501e1a9d85c28b812aeadfab # master
+        env:
+          # Official yq v4 binary (no Docker) so this job can run on self-hosted runners.
+          # renovate: datasource=github-releases depName=mikefarah/yq versioning=semver
+          YQ_VERSION: v4.53.3
+        run: |
+          set -euo pipefail
+
+          case "$(uname -m)" in
+            x86_64) arch=amd64 ;;
+            aarch64 | arm64) arch=arm64 ;;
+            *) echo "::error::Unsupported architecture: $(uname -m)"; exit 1 ;;
+          esac
+
+          dest="${RUNNER_TEMP:-/tmp}/yq-bin"
+          mkdir -p "$dest"
+          url="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${arch}"
+
+          if command -v curl >/dev/null 2>&1; then
+            curl -fsSL "$url" -o "$dest/yq"
+          elif command -v wget >/dev/null 2>&1; then
+            wget -qO "$dest/yq" "$url"
+          else
+            echo "::error::Neither curl nor wget is available on the runner."
+            exit 1
+          fi
+
+          chmod +x "$dest/yq"
+          echo "$dest" >> "$GITHUB_PATH"
+          "$dest/yq" --version
 
       - name: Update image tags
         env:

@@ -22,7 +22,7 @@ jobs:
   publish-syncroot:
     name: Publish syncroot artifact
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
         tag: [at23]
@@ -54,7 +54,7 @@ jobs:
   publish-app-manifests:
     name: Publish app manifests artifact
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
