@@ -1,4 +1,18 @@
-apiVersion: policy.linkerd.io/v1beta2
+# Linkerd inbound authorization for dialogporten pods (port 8080).
+#
+# defaultInboundPolicy is deny, so :8080 is default-deny. Access is scoped per
+# HTTP route, so the kubelet reaches only health — never the application paths:
+#   - "/"        -> mesh (mTLS) identity: internal dialogporten components, the
+#                   arbeidsflate BFF, and traefik ingress. This is all real traffic.
+#   - "/health"  -> the kubelet, for the liveness/readiness/startup probes, which
+#                   hit :8080 unmeshed from the node. Scoping to the health route
+#                   keeps node-sourced traffic off the API surface.
+#
+# Defining HTTPRoutes replaces the Server's default catch-all, so "/" is an
+# explicit catch-all (every non-health request matches it). Node subnet on
+# dis-core clusters is 10.205.0.0/16 (+ fd12:2291:d70a::/48), verified on
+# at22/at23 — deliberately not the pod subnet (10.240.0.0/16).
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   name: dialogporten-http
@@ -19,18 +33,60 @@ metadata:
     app.kubernetes.io/part-of: dialogporten
 spec:
   identities:
-    - "*"
+    # Internal dialogporten components (graphql, service, web-api-eu, web-api-so).
+    - "*.product-dialogporten.serviceaccount.identity.linkerd.cluster.local"
+    # Arbeidsflate BFF.
+    - "bff.product-arbeidsflate.serviceaccount.identity.linkerd.cluster.local"
+    # Ingress — covers all external traffic, which reaches us via traefik.
+    - "altinn-traefik.traefik.serviceaccount.identity.linkerd.cluster.local"
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: NetworkAuthentication
 metadata:
-  name: dialogporten-network-authn
+  name: dialogporten-kubelet
   labels:
     app.kubernetes.io/part-of: dialogporten
 spec:
+  # Node subnet (kubelet source) — excludes the pod subnet (10.240.0.0/16).
   networks:
-    - cidr: 0.0.0.0/0
-    - cidr: ::/0
+    - cidr: 10.205.0.0/16
+    - cidr: fd12:2291:d70a::/48
+---
+# Catch-all route: all non-health traffic, authorized by mesh identity below.
+apiVersion: policy.linkerd.io/v1beta3
+kind: HTTPRoute
+metadata:
+  name: dialogporten-app
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  parentRefs:
+    - group: policy.linkerd.io
+      kind: Server
+      name: dialogporten-http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+---
+# Health route: liveness/readiness/startup probes, authorized for the kubelet below.
+apiVersion: policy.linkerd.io/v1beta3
+kind: HTTPRoute
+metadata:
+  name: dialogporten-health
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  parentRefs:
+    - group: policy.linkerd.io
+      kind: Server
+      name: dialogporten-http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /health
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
@@ -41,8 +97,8 @@ metadata:
 spec:
   targetRef:
     group: policy.linkerd.io
-    kind: Server
-    name: dialogporten-http
+    kind: HTTPRoute
+    name: dialogporten-app
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: MeshTLSAuthentication
@@ -51,15 +107,15 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  name: dialogporten-allow-network
+  name: dialogporten-allow-kubelet
   labels:
     app.kubernetes.io/part-of: dialogporten
 spec:
   targetRef:
     group: policy.linkerd.io
-    kind: Server
-    name: dialogporten-http
+    kind: HTTPRoute
+    name: dialogporten-health
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: NetworkAuthentication
-      name: dialogporten-network-authn
+      name: dialogporten-kubelet

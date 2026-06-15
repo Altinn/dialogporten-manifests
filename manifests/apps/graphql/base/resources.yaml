@@ -23,6 +23,30 @@ spec:
       containers:
         - name: graphql
           image: ghcr.io/altinn/dialogporten-graphql:set-by-ci
+          ports:
+            - name: http
+              containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 2
           envFrom:
             - configMapRef:
                 name: graphql-runtime
