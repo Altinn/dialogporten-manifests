@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: update-manifests-${{ github.event.client_payload.environment }}
@@ -116,3 +117,15 @@ jobs:
 
           echo "::error::Failed to push after 3 attempts"
           exit 1
+
+      - name: Trigger Publish Flux artifacts workflow
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The commit above is pushed with GITHUB_TOKEN, which deliberately does
+          # NOT emit a push event (GitHub's recursive-run prevention), so the
+          # Publish Flux artifacts workflow's `push` trigger never fires for it.
+          # Dispatch it explicitly instead — workflow_dispatch is exempt from
+          # that rule even when invoked with GITHUB_TOKEN.
+          gh workflow run publish-flux-artifacts.yml --ref main
