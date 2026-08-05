@@ -1,0 +1,14 @@
+# Disable the service app in at23: scale the Deployment to 0 replicas and
+# remove the HorizontalPodAutoscaler so it does not scale the workload back up.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service
+spec:
+  replicas: 0
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: service
+$patch: delete

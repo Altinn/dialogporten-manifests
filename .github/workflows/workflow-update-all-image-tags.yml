@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: update-manifests-${{ github.event.client_payload.environment }}
@@ -14,7 +15,7 @@ concurrency:
 jobs:
   update-tags:
     name: Update image tags for ${{ github.event.client_payload.environment }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Validate inputs
         env:
@@ -23,8 +24,8 @@ jobs:
         run: |
           # Validate environment
           case "$ENVIRONMENT" in
-            yt01|tt02|at22|at23|prod) ;;
-            *) echo "::error::Invalid environment: $ENVIRONMENT (must be yt01, tt02, at22, at23, or prod)"; exit 1 ;;
+            yt01|tt02|at23|prod) ;;
+            *) echo "::error::Invalid environment: $ENVIRONMENT (must be yt01, tt02, at23, or prod)"; exit 1 ;;
           esac
 
           # Validate image_tag format: semver with optional SHA suffix (e.g., 1.2.3 or 1.2.3-abc1234)
@@ -34,10 +35,38 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install yq
-        uses: mikefarah/yq@3b2423e8713e34e93ee68ddc253cea8d040b48ae # master
+        env:
+          # Official yq v4 binary (no Docker) so this job can run on self-hosted runners.
+          # renovate: datasource=github-releases depName=mikefarah/yq versioning=semver
+          YQ_VERSION: v4.53.3
+        run: |
+          set -euo pipefail
+
+          case "$(uname -m)" in
+            x86_64) arch=amd64 ;;
+            aarch64 | arm64) arch=arm64 ;;
+            *) echo "::error::Unsupported architecture: $(uname -m)"; exit 1 ;;
+          esac
+
+          dest="${RUNNER_TEMP:-/tmp}/yq-bin"
+          mkdir -p "$dest"
+          url="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${arch}"
+
+          if command -v curl >/dev/null 2>&1; then
+            curl -fsSL "$url" -o "$dest/yq"
+          elif command -v wget >/dev/null 2>&1; then
+            wget -qO "$dest/yq" "$url"
+          else
+            echo "::error::Neither curl nor wget is available on the runner."
+            exit 1
+          fi
+
+          chmod +x "$dest/yq"
+          echo "$dest" >> "$GITHUB_PATH"
+          "$dest/yq" --version
 
       - name: Update image tags
         env:
@@ -88,3 +117,15 @@ jobs:
 
           echo "::error::Failed to push after 3 attempts"
           exit 1
+
+      - name: Trigger Publish Flux artifacts workflow
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The commit above is pushed with GITHUB_TOKEN, which deliberately does
+          # NOT emit a push event (GitHub's recursive-run prevention), so the
+          # Publish Flux artifacts workflow's `push` trigger never fires for it.
+          # Dispatch it explicitly instead — workflow_dispatch is exempt from
+          # that rule even when invoked with GITHUB_TOKEN.
+          gh workflow run publish-flux-artifacts.yml --ref main

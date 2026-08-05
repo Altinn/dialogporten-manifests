@@ -22,13 +22,13 @@ jobs:
   publish-syncroot:
     name: Publish syncroot artifact
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
-        tag: [at22, at23]
+        tag: [at23]
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate syncroot structure
         shell: bash
@@ -42,7 +42,7 @@ jobs:
           done
 
       - name: Build and push syncroot artifact
-        uses: Altinn/altinn-platform/actions/flux/build-push-image@aa07635f749787c07c57d69e4d1b6f43e360ab84 # main
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@fb059cc61cdd200c0bd89bb9af106b16c066e4cd # main
         with:
           image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
           tag: ${{ matrix.tag }}
@@ -54,10 +54,10 @@ jobs:
   publish-app-manifests:
     name: Publish app manifests artifact
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate app manifests structure
         shell: bash
@@ -110,7 +110,7 @@ jobs:
           done
 
       - name: Build and push app manifests artifact
-        uses: Altinn/altinn-platform/actions/flux/build-push-image@aa07635f749787c07c57d69e4d1b6f43e360ab84 # main
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@fb059cc61cdd200c0bd89bb9af106b16c066e4cd # main
         with:
           image_name: ${{ env.APP_ARTIFACT_NAME }}
           tag: main
