@@ -1,17 +1,19 @@
+# Pilot scope (Task 10 Step 3 exercises this): failure alert lives only in at23 for
+# now. Promote to base once proven, per RFC 0010 §"Failure alert".
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Alert
 metadata:
-  name: deploy-webhook
+  name: deploy-failure-webhook
   namespace: product-dialogporten
 spec:
   providerRef:
     name: deploy-webhook
-  eventSeverity: info
+  eventSeverity: error
   eventSources:
     - kind: Kustomization
       name: dialogporten-apps
   eventMetadata:
     product: dialogporten
-    env: at23 # patched per environment
+    env: at23
     dispatch_repo: "Altinn/dialogporten"
-    dispatch_event: "flux-deploy"
+    dispatch_event: "flux-deploy-failed"

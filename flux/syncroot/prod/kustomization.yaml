@@ -22,11 +22,7 @@ patches:
       kind: Alert
       metadata:
         name: deploy-webhook
-        namespace: dialogporten
+        namespace: product-dialogporten
       spec:
-        eventSources:
-          - kind: Kustomization
-            name: dialogporten-apps-prod
         eventMetadata:
-          product: dialogporten
           env: prod

@@ -5,3 +5,4 @@ resources:
   - dialogporten-flux-kustomization.yaml
   - deploy-webhook-provider.yaml
   - deploy-webhook-alert.yaml
+  - deploy-webhook-hmac-secret.yaml

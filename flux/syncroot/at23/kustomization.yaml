@@ -3,6 +3,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../base
+  - deploy-failure-webhook-alert.yaml
 patches:
   - target:
       kind: Kustomization
@@ -23,11 +24,7 @@ patches:
       kind: Alert
       metadata:
         name: deploy-webhook
-        namespace: dialogporten
+        namespace: product-dialogporten
       spec:
-        eventSources:
-          - kind: Kustomization
-            name: dialogporten-apps-at23
         eventMetadata:
-          product: dialogporten
           env: at23
