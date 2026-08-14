@@ -42,7 +42,7 @@ jobs:
           done
 
       - name: Build and push syncroot artifact
-        uses: Altinn/altinn-platform/actions/flux/build-push-image@fb059cc61cdd200c0bd89bb9af106b16c066e4cd # main
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@470eaf98af2ab545e7e840055a538d73e40c3c80 # main
         with:
           image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
           tag: ${{ matrix.tag }}
@@ -110,7 +110,7 @@ jobs:
           done
 
       - name: Build and push app manifests artifact
-        uses: Altinn/altinn-platform/actions/flux/build-push-image@fb059cc61cdd200c0bd89bb9af106b16c066e4cd # main
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@470eaf98af2ab545e7e840055a538d73e40c3c80 # main
         with:
           image_name: ${{ env.APP_ARTIFACT_NAME }}
           tag: main
