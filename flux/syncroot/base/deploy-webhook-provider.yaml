@@ -4,7 +4,5 @@ metadata:
   name: deploy-webhook
   namespace: product-dialogporten
 spec:
-  type: generic-hmac
+  type: generic
   address: http://flux-dispatch.dis-platform.svc.cluster.local:8080/flux-events
-  secretRef:
-    name: flux-dispatch-hmac-token
