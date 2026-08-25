@@ -36,6 +36,13 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # repository_dispatch pins github.sha to the default-branch tip as of
+          # when the event was created, and checkout would fetch exactly that
+          # commit into origin/main. A run that waits in the concurrency queue
+          # would then build on a stale base. Track the live branch instead.
+          ref: main
+          fetch-depth: 0
 
       - name: Install yq
         env:
@@ -68,11 +75,14 @@ jobs:
           echo "$dest" >> "$GITHUB_PATH"
           "$dest/yq" --version
 
-      - name: Update image tags
+      - name: Update image tags and push
+        id: update
         env:
           ENVIRONMENT: ${{ github.event.client_payload.environment }}
           IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
         run: |
+          set -euo pipefail
+
           FILE="manifests/environments/${ENVIRONMENT}/kustomization.yaml"
 
           if [ ! -f "$FILE" ]; then
@@ -80,46 +90,48 @@ jobs:
             exit 1
           fi
 
-          yq -i '(.images[].newTag) = strenv(IMAGE_TAG)' "$FILE"
-
-      - name: Check for changes
-        id: changes
-        run: |
-          if git diff --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No changes detected, skipping commit."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Commit and push
-        if: steps.changes.outputs.changed == 'true'
-        env:
-          ENVIRONMENT: ${{ github.event.client_payload.environment }}
-          IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
-        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: update image tags to ${IMAGE_TAG} for ${ENVIRONMENT}"
 
-          # Retry push with rebase up to 3 times to handle concurrent pushes
-          for attempt in 1 2 3; do
-            echo "Push attempt $attempt..."
-            if git push; then
-              echo "Push succeeded on attempt $attempt."
+          # Self-hosted runners reuse the workspace, and checkout's cleanup does
+          # not clear .git/rebase-merge. Drop any state left by an interrupted run.
+          git rebase --abort 2>/dev/null || true
+          git merge --abort 2>/dev/null || true
+
+          # Optimistic read-modify-write: re-derive the edit from the current tip
+          # on every attempt. A run that loses the race just re-applies newTag on
+          # top of the winner, so concurrent runs can never conflict — rebasing
+          # here always would, since both commits rewrite the same newTag lines.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin +refs/heads/main:refs/remotes/origin/main
+            git reset --hard refs/remotes/origin/main
+
+            yq -i '(.images[].newTag) = strenv(IMAGE_TAG)' "$FILE"
+
+            if git diff --quiet; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "Already at ${IMAGE_TAG} for ${ENVIRONMENT}, nothing to do."
               exit 0
             fi
-            echo "Push failed, pulling with rebase and retrying..."
-            git pull --rebase
+
+            git commit -am "chore: update image tags to ${IMAGE_TAG} for ${ENVIRONMENT}"
+
+            echo "Push attempt ${attempt}..."
+            if git push origin HEAD:refs/heads/main; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              echo "Push succeeded on attempt ${attempt}."
+              exit 0
+            fi
+
+            echo "Push rejected, another run pushed first. Rebuilding on the new tip..."
             sleep $((attempt * 2))
           done
 
-          echo "::error::Failed to push after 3 attempts"
+          echo "::error::Failed to push after 5 attempts"
           exit 1
 
       - name: Trigger Publish Flux artifacts workflow
-        if: steps.changes.outputs.changed == 'true'
+        if: steps.update.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
