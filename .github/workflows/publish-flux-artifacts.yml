@@ -23,6 +23,18 @@ jobs:
     name: Publish syncroot artifact
     if: github.ref == 'refs/heads/main'
     runs-on: self-hosted
+    # The self-hosted runners are Azure Container App Jobs, which inject a managed
+    # identity endpoint. flux --provider=azure resolves credentials through
+    # DefaultAzureCredential, so it tries ManagedIdentityCredential, gets HTTP 400
+    # (the job has a user-assigned identity and flux passes no client id), and
+    # aborts the whole chain before reaching the az login session from azure/login.
+    # Clearing these makes that credential report itself unavailable again, so the
+    # chain falls through to the CLI credential as it does on GitHub-hosted runners.
+    # Remove once Altinn/altinn-platform#3912 reaches build-push-image, which still
+    # pins setup-flux-acr@e095eaa (2026-06-09) — predating the fix.
+    env:
+      IDENTITY_ENDPOINT: ""
+      MSI_ENDPOINT: ""
     strategy:
       matrix:
         tag: [at23]
@@ -55,9 +67,48 @@ jobs:
     name: Publish app manifests artifact
     if: github.ref == 'refs/heads/main'
     runs-on: self-hosted
+    # See the comment on publish-syncroot above.
+    env:
+      IDENTITY_ENDPOINT: ""
+      MSI_ENDPOINT: ""
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install kustomize
+        env:
+          # Official kustomize binary (no Docker, no sudo) so this job can run on
+          # self-hosted runners, which ship neither kustomize nor kubectl.
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver extractVersion=^kustomize\/(?<version>v.+)$
+          KUSTOMIZE_VERSION: v5.8.1
+        run: |
+          set -euo pipefail
+
+          case "$(uname -m)" in
+            x86_64) arch=amd64 ;;
+            aarch64 | arm64) arch=arm64 ;;
+            *) echo "::error::Unsupported architecture: $(uname -m)"; exit 1 ;;
+          esac
+
+          dest="${RUNNER_TEMP:-/tmp}/kustomize-bin"
+          mkdir -p "$dest"
+          tarball="kustomize_${KUSTOMIZE_VERSION}_linux_${arch}.tar.gz"
+          url="https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/${tarball}"
+
+          if command -v curl >/dev/null 2>&1; then
+            curl -fsSL "$url" -o "$dest/$tarball"
+          elif command -v wget >/dev/null 2>&1; then
+            wget -qO "$dest/$tarball" "$url"
+          else
+            echo "::error::Neither curl nor wget is available on the runner."
+            exit 1
+          fi
+
+          tar -xzf "$dest/$tarball" -C "$dest" kustomize
+          rm -f "$dest/$tarball"
+          chmod +x "$dest/kustomize"
+          echo "$dest" >> "$GITHUB_PATH"
+          "$dest/kustomize" version
 
       - name: Validate app manifests structure
         shell: bash
