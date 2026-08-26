@@ -23,18 +23,6 @@ jobs:
     name: Publish syncroot artifact
     if: github.ref == 'refs/heads/main'
     runs-on: self-hosted
-    # The self-hosted runners are Azure Container App Jobs, which inject a managed
-    # identity endpoint. flux --provider=azure resolves credentials through
-    # DefaultAzureCredential, so it tries ManagedIdentityCredential, gets HTTP 400
-    # (the job has a user-assigned identity and flux passes no client id), and
-    # aborts the whole chain before reaching the az login session from azure/login.
-    # Clearing these makes that credential report itself unavailable again, so the
-    # chain falls through to the CLI credential as it does on GitHub-hosted runners.
-    # Remove once Altinn/altinn-platform#3912 reaches build-push-image, which still
-    # pins setup-flux-acr@e095eaa (2026-06-09) — predating the fix.
-    env:
-      IDENTITY_ENDPOINT: ""
-      MSI_ENDPOINT: ""
     strategy:
       matrix:
         tag: [at23]
@@ -54,7 +42,7 @@ jobs:
           done
 
       - name: Build and push syncroot artifact
-        uses: Altinn/altinn-platform/actions/flux/build-push-image@470eaf98af2ab545e7e840055a538d73e40c3c80 # main
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@523f141da4f116fdd7331585396d83a5d7ade7ea # main
         with:
           image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
           tag: ${{ matrix.tag }}
@@ -67,10 +55,6 @@ jobs:
     name: Publish app manifests artifact
     if: github.ref == 'refs/heads/main'
     runs-on: self-hosted
-    # See the comment on publish-syncroot above.
-    env:
-      IDENTITY_ENDPOINT: ""
-      MSI_ENDPOINT: ""
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -161,7 +145,7 @@ jobs:
           done
 
       - name: Build and push app manifests artifact
-        uses: Altinn/altinn-platform/actions/flux/build-push-image@470eaf98af2ab545e7e840055a538d73e40c3c80 # main
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@523f141da4f116fdd7331585396d83a5d7ade7ea # main
         with:
           image_name: ${{ env.APP_ARTIFACT_NAME }}
           tag: main
