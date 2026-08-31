@@ -3,6 +3,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../base
+  - deploy-failure-webhook-alert.yaml
 patches:
   - target:
       kind: Kustomization
@@ -15,3 +16,15 @@ patches:
         namespace: product-dialogporten
       spec:
         path: ./environments/at23
+  - target:
+      kind: Alert
+      name: deploy-webhook
+    patch: |-
+      apiVersion: notification.toolkit.fluxcd.io/v1beta3
+      kind: Alert
+      metadata:
+        name: deploy-webhook
+        namespace: product-dialogporten
+      spec:
+        eventMetadata:
+          env: at23

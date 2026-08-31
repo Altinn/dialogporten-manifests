@@ -14,3 +14,15 @@ patches:
         namespace: product-dialogporten
       spec:
         path: ./environments/yt01
+  - target:
+      kind: Alert
+      name: deploy-webhook
+    patch: |-
+      apiVersion: notification.toolkit.fluxcd.io/v1beta3
+      kind: Alert
+      metadata:
+        name: deploy-webhook
+        namespace: product-dialogporten
+      spec:
+        eventMetadata:
+          env: yt01
