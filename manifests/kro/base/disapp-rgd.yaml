@@ -1,0 +1,305 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: disapp.application.dis.altinn.cloud
+spec:
+  schema:
+    apiVersion: application.dis.altinn.cloud/v1alpha1
+    kind: DisApp
+
+    spec:
+      image: string | required=true
+      containerPort: integer | default=8080
+
+      runtime: "map[string]string"
+
+      secrets:
+        secretStoreRef: string | required=true
+        refreshInterval: string | default="1h"
+        data:
+          - secretKey: string | required=true
+            remoteRef: string | required=true
+
+      ingress:
+        hostname: string | required=true
+        pathPrefix: string | required=true
+        rewriteTo: string | required=true
+
+      autoscaling:
+        minReplicas: integer | default=1
+        maxReplicas: integer | default=2
+        targetCPUUtilization: integer | default=50
+
+      resources:
+        requests:
+          cpu: string
+          memory: string
+        limits:
+          cpu: string
+          memory: string
+
+      apim:
+        backends:
+          - name: string | required=true
+            title: string
+            description: string
+            url: string | required=true
+        apis:
+          - name: string | required=true
+            displayName: string
+            description: string
+            path: string | required=true
+            apiType: string | default="http"
+            versions:
+              - displayName: string
+                isCurrent: boolean | default=false
+                subscriptionRequired: boolean | default=false
+                protocols:
+                  - string
+                contentFormat: string
+                content: string
+                serviceUrl: string
+                policies:
+                  policyValues:
+                    - name: string
+                      value: string
+                      idFromBackend:
+                        name: string
+                  policyContent: string
+                  policyFormat: string
+
+    status:
+      identityReady: ${appIdentity.metadata.name != ""}
+      ready: ${appIdentity.metadata.name != ""}
+
+    additionalPrinterColumns:
+      - name: Ready
+        type: boolean
+        jsonPath: .status.ready
+      - name: Image
+        type: string
+        jsonPath: .spec.image
+
+  resources:
+    # --- Always created: Application Identity ---
+    - id: appIdentity
+      template:
+        apiVersion: application.dis.altinn.cloud/v1alpha1
+        kind: ApplicationIdentity
+        metadata:
+          name: ${schema.metadata.name}
+          labels:
+            app.kubernetes.io/name: ${schema.metadata.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec: {}
+
+    # --- Always created: Runtime ConfigMap ---
+    - id: runtimeConfig
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.metadata.name + '-runtime'}
+          labels:
+            app.kubernetes.io/name: ${schema.metadata.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        data: ${schema.spec.runtime}
+
+    # --- Conditional: ExternalSecret for Azure Key Vault secrets ---
+    - id: externalSecret
+      includeWhen:
+        - ${has(schema.spec.secrets)}
+      template:
+        apiVersion: external-secrets.io/v1
+        kind: ExternalSecret
+        metadata:
+          name: ${schema.metadata.name + '-secrets'}
+          labels:
+            app.kubernetes.io/name: ${schema.metadata.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec:
+          refreshInterval: ${schema.spec.secrets.refreshInterval}
+          secretStoreRef:
+            kind: SecretStore
+            name: ${schema.spec.secrets.secretStoreRef}
+          target:
+            name: ${schema.metadata.name + '-secrets'}
+            creationPolicy: Owner
+          data: ${schema.spec.secrets.data.map(d, {'secretKey': d.secretKey, 'remoteRef': {'key': d.remoteRef}})}
+
+    # --- Always created: Deployment ---
+    - id: deployment
+      readyWhen:
+        - ${deployment.status.conditions.exists(c, c.type == "Available" && c.status == "True")}
+      template:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${schema.metadata.name}
+          labels:
+            app.kubernetes.io/name: ${schema.metadata.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec:
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: ${schema.metadata.name}
+          template:
+            metadata:
+              labels:
+                app.kubernetes.io/name: ${schema.metadata.name}
+                app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+                azure.workload.identity/use: "true"
+              annotations:
+                cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+                linkerd.io/inject: enabled
+            spec:
+              serviceAccountName: ${schema.metadata.name}
+              containers:
+                - name: ${schema.metadata.name}
+                  image: ${schema.spec.image}
+                  envFrom:
+                    - configMapRef:
+                        name: ${schema.metadata.name + '-runtime'}
+                    - secretRef:
+                        name: ${schema.metadata.name + '-secrets'}
+                  env:
+                    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                      value: http://otel-collector.monitoring.svc.cluster.local:4317
+                    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                      value: grpc
+                    - name: OTEL_SERVICE_NAME
+                      value: ${schema.metadata.labels['app.kubernetes.io/part-of'] + '-' + schema.metadata.name}
+                    - name: POD_UID
+                      valueFrom:
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.uid
+                    - name: OTEL_RESOURCE_ATTRIBUTES
+                      value: "k8s.pod.uid=$(POD_UID)"
+
+    # --- Always created: Service ---
+    - id: service
+      template:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${schema.metadata.name}
+          labels:
+            app.kubernetes.io/name: ${schema.metadata.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec:
+          selector:
+            app.kubernetes.io/name: ${schema.metadata.name}
+          ports:
+            - name: http
+              port: 80
+              targetPort: ${schema.spec.containerPort}
+
+    # --- Conditional: HTTPRoute for ingress ---
+    - id: httpRoute
+      includeWhen:
+        - ${has(schema.spec.ingress)}
+      template:
+        apiVersion: gateway.networking.k8s.io/v1
+        kind: HTTPRoute
+        metadata:
+          name: ${schema.metadata.name}
+          labels:
+            app.kubernetes.io/name: ${schema.metadata.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec:
+          hostnames:
+            - ${schema.spec.ingress.hostname}
+          parentRefs:
+            - group: gateway.networking.k8s.io
+              kind: Gateway
+              name: traefik-gateway
+              namespace: traefik
+          rules:
+            - backendRefs:
+                - group: ""
+                  kind: Service
+                  name: ${schema.metadata.name}
+                  port: 80
+              filters:
+                - type: URLRewrite
+                  urlRewrite:
+                    path:
+                      type: ReplacePrefixMatch
+                      replacePrefixMatch: ${schema.spec.ingress.rewriteTo}
+                - type: RequestHeaderModifier
+                  requestHeaderModifier:
+                    set:
+                      - name: l5d-dst-override
+                        value: ${schema.metadata.name + '.' + schema.metadata.namespace + '.svc.cluster.local:80'}
+              matches:
+                - path:
+                    type: PathPrefix
+                    value: ${schema.spec.ingress.pathPrefix}
+
+    # --- Conditional: HPA ---
+    - id: hpa
+      includeWhen:
+        - ${has(schema.spec.autoscaling)}
+      template:
+        apiVersion: autoscaling/v2
+        kind: HorizontalPodAutoscaler
+        metadata:
+          name: ${schema.metadata.name}
+          labels:
+            app.kubernetes.io/name: ${schema.metadata.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec:
+          scaleTargetRef:
+            apiVersion: apps/v1
+            kind: Deployment
+            name: ${schema.metadata.name}
+          minReplicas: ${schema.spec.autoscaling.minReplicas}
+          maxReplicas: ${schema.spec.autoscaling.maxReplicas}
+          metrics:
+            - type: Resource
+              resource:
+                name: cpu
+                target:
+                  type: Utilization
+                  averageUtilization: ${schema.spec.autoscaling.targetCPUUtilization}
+
+    # --- Collection: APIM Backends ---
+    - id: apimBackends
+      includeWhen:
+        - ${has(schema.spec.apim) && has(schema.spec.apim.backends)}
+      forEach:
+        - backend: ${schema.spec.apim.backends}
+      template:
+        apiVersion: apim.dis.altinn.cloud/v1alpha1
+        kind: Backend
+        metadata:
+          name: ${backend.name}
+          labels:
+            app.kubernetes.io/name: ${backend.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec:
+          title: ${backend.title}
+          description: ${backend.description}
+          url: ${backend.url}
+
+    # --- Collection: APIM Apis ---
+    - id: apimApis
+      includeWhen:
+        - ${has(schema.spec.apim) && has(schema.spec.apim.apis)}
+      forEach:
+        - api: ${schema.spec.apim.apis}
+      template:
+        apiVersion: apim.dis.altinn.cloud/v1alpha1
+        kind: Api
+        metadata:
+          name: ${api.name}
+          labels:
+            app.kubernetes.io/name: ${api.name}
+            app.kubernetes.io/part-of: ${schema.metadata.labels['app.kubernetes.io/part-of']}
+        spec:
+          displayName: ${api.displayName}
+          description: ${api.description}
+          path: ${api.path}
+          apiType: ${api.apiType}
+          versions: ${api.versions}
