@@ -27,7 +27,10 @@ When changing structure, environments, Flux source wiring, workflow publish logi
 
 ## Environment additions/removals
 If environment set changes, update all of:
-- `flux/syncroot/<env>/kustomization.yaml`
+- `flux/syncroot/<env>/kustomization.yaml` — must patch `spec.path` to `./environments/<env>`.
+  The base pins `spec.path` to `at23`, so an overlay that omits the patch silently
+  deploys at23's manifests. CI enforces this in both `pull-request.yml` and the
+  `publish-syncroot` job of `publish-flux-artifacts.yml`.
 - validation loops in `.github/workflows/publish-flux-artifacts.yml`
 - `README.md`, `docs/summary.md`, and this file
 

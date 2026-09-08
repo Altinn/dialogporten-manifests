@@ -30,13 +30,77 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Install kustomize
+        env:
+          # Official kustomize binary (no Docker, no sudo) so this job can run on
+          # self-hosted runners, which ship neither kustomize nor kubectl.
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver extractVersion=^kustomize\/(?<version>v.+)$
+          KUSTOMIZE_VERSION: v5.8.1
+        run: |
+          set -euo pipefail
+
+          case "$(uname -m)" in
+            x86_64) arch=amd64 ;;
+            aarch64 | arm64) arch=arm64 ;;
+            *) echo "::error::Unsupported architecture: $(uname -m)"; exit 1 ;;
+          esac
+
+          dest="${RUNNER_TEMP:-/tmp}/kustomize-bin"
+          mkdir -p "$dest"
+          tarball="kustomize_${KUSTOMIZE_VERSION}_linux_${arch}.tar.gz"
+          url="https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/${tarball}"
+
+          if command -v curl >/dev/null 2>&1; then
+            curl -fsSL "$url" -o "$dest/$tarball"
+          elif command -v wget >/dev/null 2>&1; then
+            wget -qO "$dest/$tarball" "$url"
+          else
+            echo "::error::Neither curl nor wget is available on the runner."
+            exit 1
+          fi
+
+          tar -xzf "$dest/$tarball" -C "$dest" kustomize
+          rm -f "$dest/$tarball"
+          chmod +x "$dest/kustomize"
+          echo "$dest" >> "$GITHUB_PATH"
+          "$dest/kustomize" version
+
       - name: Validate syncroot structure
         shell: bash
         run: |
+          set -euo pipefail
+
+          render_kustomize() {
+            local path="$1"
+            if command -v kustomize >/dev/null 2>&1; then
+              kustomize build "$path"
+              return
+            fi
+            if command -v kubectl >/dev/null 2>&1; then
+              kubectl kustomize "$path"
+              return
+            fi
+            echo "::error::Neither 'kustomize' nor 'kubectl' found in runner PATH."
+            exit 1
+          }
+
+          # flux/syncroot/base pins spec.path to one environment, so every overlay
+          # must patch it. An overlay that forgets would publish a syncroot that
+          # deploys the base environment's manifests instead of its own. Assert on
+          # the rendered path: a patch aimed at the wrong resource name parses fine
+          # but never applies, leaving the base's hardcoded spec.path in place.
           for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
-            if [ ! -f "./flux/syncroot/${env}/kustomization.yaml" ]; then
-              echo "Error: Missing ./flux/syncroot/${env}/kustomization.yaml"
+            overlay="./flux/syncroot/${env}/kustomization.yaml"
+
+            if [ ! -f "$overlay" ]; then
+              echo "::error::Missing ${overlay}"
+              exit 1
+            fi
+
+            selected=$(render_kustomize "./flux/syncroot/${env}" | sed -n 's/^[[:space:]]*path:[[:space:]]*//p')
+            if [ "$selected" != "./environments/${env}" ]; then
+              echo "::error::./flux/syncroot/${env}/ selects '${selected:-<none>}' but must select ./environments/${env}"
               exit 1
             fi
           done

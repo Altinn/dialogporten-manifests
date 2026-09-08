@@ -45,6 +45,29 @@ jobs:
             exit 1
           fi
 
+      - name: Validate syncroot overlays select their own environment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # flux/syncroot/base pins spec.path to one environment, so every overlay
+          # must patch it. An overlay that forgets silently deploys the base
+          # environment's manifests instead of its own.
+          for dir in ./manifests/environments/*/; do
+            env=$(basename "$dir")
+            overlay="./flux/syncroot/${env}/kustomization.yaml"
+
+            if [ ! -f "$overlay" ]; then
+              echo "::error::Missing ${overlay}"
+              exit 1
+            fi
+
+            if ! grep -qE "^[[:space:]]*path:[[:space:]]*\./environments/${env}[[:space:]]*$" "$overlay"; then
+              echo "::error::${overlay} does not patch spec.path to ./environments/${env}"
+              exit 1
+            fi
+          done
+
   kustomize-diff:
     uses: dis-way/actions/.github/workflows/kustomize-diff.yml@45eae05af29ddb403645fc226d22ce63d3ca1ed4 # main
     with:
