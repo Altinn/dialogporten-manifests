@@ -4,5 +4,4 @@ resources:
   - ../../../../apps/web-api-so/base
 patches:
   - path: deployment-env.yaml
-  - path: deployment-resources.yaml
   - path: ingress-hostname.yaml

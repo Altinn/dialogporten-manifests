@@ -1,5 +1,5 @@
 # Disable the service app in at23: scale the Deployment to 0 replicas and
-# remove the HorizontalPodAutoscaler so it does not scale the workload back up.
+# remove the KEDA ScaledObject so it does not scale the workload back up.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,8 +7,8 @@ metadata:
 spec:
   replicas: 0
 ---
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
 metadata:
   name: service
 $patch: delete

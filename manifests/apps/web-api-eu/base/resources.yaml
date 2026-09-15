@@ -26,6 +26,13 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
           startupProbe:
             httpGet:
               path: /health/startup
@@ -160,8 +167,8 @@ spec:
         type: PathPrefix
         value: /dialogporten/enduser
 ---
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
 metadata:
   name: web-api-eu
   labels:
@@ -172,14 +179,17 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: web-api-eu
-  maxReplicas: 2
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 50
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "50"
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: "70"
 ---
 apiVersion: application.dis.altinn.cloud/v1alpha1
 kind: ApplicationIdentity
