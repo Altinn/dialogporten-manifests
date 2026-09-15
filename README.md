@@ -31,4 +31,3 @@ Slack delivery errors fail the notification job so an undelivered alert is visib
 
 See `docs/summary.md` for more detail.
 Agent/maintenance rules live in `AGENTS.md`.
-Repository maintenance skill: `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`.

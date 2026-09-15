@@ -24,7 +24,7 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 - Both use `workflow-send-ci-cd-status-slack-message.yml`, following Dialogporten's CI/CD Slack convention. The reusable workflow needs `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID_FOR_CI_CD_STATUS` available to this repository; see [Failure notifications](../README.md#failure-notifications) for setup.
 - Alerts contain operation context and a link to the failing run. They run without checkout or tool installation, JSON-encode dynamic text, and fail visibly on Slack delivery errors. Successful, skipped, and cancelled runs remain silent.
 
-Change-maintenance rules are defined in `AGENTS.md` and `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`.
+Change-maintenance rules are defined in `AGENTS.md`.
 
 ## Scaling model
 Apps autoscale with KEDA (`ScaledObject`, `keda.sh/v1alpha1`) rather than a plain
