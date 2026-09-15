@@ -1,3 +1,4 @@
-# Local Codex skills (do not commit)
-.codex/skills/
+# Local Codex skills, except the shared repository maintenance guide
+.codex/skills/*
+!.codex/skills/dialogporten-manifests-maintenance/
 .omc/

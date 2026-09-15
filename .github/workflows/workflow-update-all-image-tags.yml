@@ -141,3 +141,18 @@ jobs:
           # Dispatch it explicitly instead — workflow_dispatch is exempt from
           # that rule even when invoked with GITHUB_TOKEN.
           gh workflow run publish-flux-artifacts.yml --ref main
+
+  notify-failure:
+    name: Send Slack message on failure
+    needs: [update-tags]
+    if: ${{ failure() && !cancelled() }}
+    uses: ./.github/workflows/workflow-send-ci-cd-status-slack-message.yml
+    with:
+      title: Image tag update failed
+      details: |
+        Environment: ${{ github.event.client_payload.environment || 'unknown' }}
+        Image tag: ${{ github.event.client_payload.image_tag || 'unknown' }}
+        Update image tags and dispatch publishing: ${{ needs.update-tags.result }}
+    secrets:
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID_FOR_CI_CD_STATUS }}

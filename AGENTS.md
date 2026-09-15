@@ -9,6 +9,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
 - `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`.
 - `.github/workflows/publish-flux-artifacts.yml`: publishes OCI artifacts for syncroot and app manifests.
+- `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
 
 ## Registry model
 - Runtime app images: GHCR tags set in `manifests/environments/<env>/kustomization.yaml`.
@@ -16,6 +17,13 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
   - `dialogporten/dialogporten-sync:main` (app manifests)
   - `dialogporten/syncroot:main` (syncroot)
 - Flux app `Kustomization` objects apply environment wrappers directly and do not use `postBuild.substituteFrom`.
+
+## Workflow failure notifications
+
+- Image-tag update alerts must cover the entire `update-tags` job, including validation, push, and publish dispatch.
+- Artifact publishing alerts must depend on both `publish-syncroot` and `publish-app-manifests` and report both results in one message.
+- Keep notifications gated by `failure() && !cancelled()` so successful, skipped, and cancelled runs stay silent.
+- Reuse `workflow-send-ci-cd-status-slack-message.yml` with `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID_FOR_CI_CD_STATUS`. Keep dynamic payload values JSON-encoded and Slack delivery errors visible as job failures.
 
 ## Change hygiene (required)
 When changing structure, environments, Flux source wiring, workflow publish logic, or registry/source strategy, update all relevant guidance in the same PR:
@@ -48,6 +56,7 @@ If environment set changes, update all of:
 
 ## Validation baseline
 Run before commit when relevant:
+- `actionlint` for workflow changes
 - `kustomize build manifests/environments/at23`
 - `kustomize build manifests/environments/tt02`
 - `kustomize build manifests/environments/yt01`

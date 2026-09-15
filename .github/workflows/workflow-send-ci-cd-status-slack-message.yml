@@ -1,0 +1,84 @@
+name: Send CI/CD Status Slack Message
+
+on:
+  workflow_call:
+    inputs:
+      title:
+        description: Failure notification heading
+        required: true
+        type: string
+      details:
+        description: Operation context and job results
+        required: true
+        type: string
+    secrets:
+      SLACK_BOT_TOKEN:
+        required: true
+      SLACK_CHANNEL_ID:
+        required: true
+
+permissions: {}
+
+jobs:
+  send-slack-message:
+    name: Send Slack message
+    runs-on: self-hosted
+    steps:
+      # No checkout or tool installation is needed, so failures in those steps
+      # in the calling workflow can still be reported.
+      - name: Send Slack message
+        uses: slackapi/slack-github-action@0d95c9a7becc1e6e297d76df9bc735c44f4cbcbc # v3.0.5
+        with:
+          errors: true
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # JSON-encode dynamic text: rejected dispatch inputs may contain quotes
+          # or newlines. Plain-text blocks also prevent Slack markup in inputs.
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+              "text": ${{ toJSON(format('{0}: {1}. Run: {2}/{0}/actions/runs/{3}', github.repository, inputs.title, github.server_url, github.run_id)) }},
+              "unfurl_links": false,
+              "unfurl_media": false,
+              "attachments": [
+                {
+                  "color": "#FF0000",
+                  "blocks": [
+                    {
+                      "type": "header",
+                      "text": {
+                        "type": "plain_text",
+                        "text": ${{ toJSON(inputs.title) }}
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "plain_text",
+                        "text": ${{ toJSON(format('{0}: {1}', github.repository, github.workflow)) }}
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "plain_text",
+                        "text": ${{ toJSON(inputs.details) }}
+                      }
+                    },
+                    {
+                      "type": "actions",
+                      "elements": [
+                        {
+                          "type": "button",
+                          "text": {
+                            "type": "plain_text",
+                            "text": "View Run"
+                          },
+                          "url": ${{ toJSON(format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id)) }}
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
