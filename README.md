@@ -18,6 +18,17 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`.
 
+## Failure notifications
+
+`Update all image tags` and `Publish Flux artifacts` send one Slack alert per failed workflow run through `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`. Alerts include the repository, workflow, job results, a link to the run, and the requested environment/image tag or published ref/commit. Image-update alerts also cover input validation, checkout, tool installation, push, and publish-dispatch failures. Publishing alerts cover either artifact job, including validation failures. Successful, skipped, and cancelled runs do not send alerts.
+
+Make these GitHub Actions secrets available to this repository, using the same names as Dialogporten's CI/CD notifications:
+
+- `SLACK_BOT_TOKEN`: Slack bot token with permission to post to the CI/CD status channel.
+- `SLACK_CHANNEL_ID_FOR_CI_CD_STATUS`: ID of that channel; the bot must have access to it.
+
+Slack delivery errors fail the notification job so an undelivered alert is visible in Actions.
+
 See `docs/summary.md` for more detail.
 Agent/maintenance rules live in `AGENTS.md`.
-Local maintenance skill: `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`.
+Repository maintenance skill: `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`.

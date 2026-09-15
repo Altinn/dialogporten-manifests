@@ -217,3 +217,19 @@ jobs:
           azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
           azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}
+
+  notify-failure:
+    name: Send Slack message on failure
+    needs: [publish-syncroot, publish-app-manifests]
+    if: ${{ failure() && !cancelled() }}
+    uses: ./.github/workflows/workflow-send-ci-cd-status-slack-message.yml
+    with:
+      title: Flux artifact publishing failed
+      details: |
+        Ref: ${{ github.ref_name }}
+        Commit: ${{ github.sha }}
+        Publish syncroot artifact: ${{ needs.publish-syncroot.result }}
+        Publish app manifests artifact: ${{ needs.publish-app-manifests.result }}
+    secrets:
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID_FOR_CI_CD_STATUS }}

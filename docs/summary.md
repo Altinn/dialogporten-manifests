@@ -17,4 +17,11 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
+## Workflow failure alerts
+
+- `workflow-update-all-image-tags.yml` updates tags from `repository_dispatch` and explicitly dispatches `publish-flux-artifacts.yml` after pushing a change. Its failure notification depends on the entire update job, including input validation and the publish dispatch.
+- `publish-flux-artifacts.yml` runs on pushes to `main` and manual dispatch. Its failure notification waits for both `publish-syncroot` and `publish-app-manifests`, reports both results, and sends one alert if either job fails.
+- Both use `workflow-send-ci-cd-status-slack-message.yml`, following Dialogporten's CI/CD Slack convention. The reusable workflow needs `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID_FOR_CI_CD_STATUS` available to this repository; see [Failure notifications](../README.md#failure-notifications) for setup.
+- Alerts contain operation context and a link to the failing run. They run without checkout or tool installation, JSON-encode dynamic text, and fail visibly on Slack delivery errors. Successful, skipped, and cancelled runs remain silent.
+
 Change-maintenance rules are defined in `AGENTS.md` and `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`.
