@@ -36,7 +36,7 @@ jobs:
           # or newlines. Plain-text blocks also prevent Slack markup in inputs.
           payload: |
             {
-              "channel": ${{ toJSON(secrets.SLACK_CHANNEL_ID) }},
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
               "text": ${{ toJSON(format('{0}: {1}. Run: {2}/{0}/actions/runs/{3}', github.repository, inputs.title, github.server_url, github.run_id)) }},
               "unfurl_links": false,
               "unfurl_media": false,
