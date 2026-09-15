@@ -1,6 +1,0 @@
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: web-api-so
-spec:
-  minReplicas: 1

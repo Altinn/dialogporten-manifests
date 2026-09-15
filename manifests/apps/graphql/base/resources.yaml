@@ -26,6 +26,13 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
           startupProbe:
             httpGet:
               path: /health/startup
@@ -158,8 +165,8 @@ spec:
         type: PathPrefix
         value: /dialogporten/graphql
 ---
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
 metadata:
   name: graphql
   labels:
@@ -170,7 +177,17 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: graphql
-  maxReplicas: 2
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "70"
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: "70"
 ---
 apiVersion: application.dis.altinn.cloud/v1alpha1
 kind: ApplicationIdentity

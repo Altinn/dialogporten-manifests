@@ -18,3 +18,33 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
 Change-maintenance rules are defined in `AGENTS.md` and `.codex/skills/dialogporten-manifests-maintenance/SKILL.md`.
+
+## Scaling model
+Apps autoscale with KEDA (`ScaledObject`, `keda.sh/v1alpha1`) rather than a plain
+`HorizontalPodAutoscaler`. This mirrors the Container Apps `scale` rules in the
+`dialogporten` repo (`.azure/applications/<app>/main.bicep`), which are KEDA rules
+underneath, so both platforms stay on the same numbers during the migration.
+
+| App | CPU trigger | Memory trigger | max replicas |
+| --- | --- | --- | --- |
+| `web-api-eu` | 50% | 70% | 20 |
+| `web-api-so` | 70% | 70% | 10 |
+| `graphql` | 70% | 70% | 10 |
+| `service` | 70% | 70% | 10 |
+
+`minReplicaCount` is 1 in every environment except `prod`, which patches it to 2
+via `scaledobject-min.yaml`.
+
+Container `resources` live in the app base at 1 CPU / 2Gi (requests == limits, as
+Container Apps does); `yt01` and `prod` override to 2 CPU / 4Gi. The requests are
+required, not cosmetic: KEDA's cpu/memory triggers read utilisation as a share of
+the request, and report `<unknown>` without one.
+
+Notes:
+- KEDA (AKS managed add-on) must be present in the target cluster; the `ScaledObject`
+  CRD is a hard dependency of these manifests.
+- KEDA's admission webhook rejects a `ScaledObject` whose target Deployment is still
+  owned by another HPA, so any pre-existing `HorizontalPodAutoscaler` must be deleted
+  before these manifests reconcile.
+- Use trigger-level `metricType: Utilization`. The `metadata.type` form used by the
+  bicep templates was removed in KEDA 2.18.

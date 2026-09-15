@@ -34,6 +34,18 @@ If environment set changes, update all of:
 - validation loops in `.github/workflows/publish-flux-artifacts.yml`
 - `README.md`, `docs/summary.md`, and this file
 
+## Scaling model
+- Apps autoscale via KEDA `ScaledObject` (`keda.sh/v1alpha1`) in each app base, not a
+  plain `HorizontalPodAutoscaler`. Values mirror the Container Apps `scale` rules in
+  the `dialogporten` repo (`.azure/applications/<app>/main.bicep`) — keep the two in
+  sync until the bicep path is retired. See `docs/summary.md` for the table.
+- Per-env changes are patch-only: `scaledobject-min.yaml` for `minReplicaCount`,
+  `deployment-resources.yaml` for CPU/memory.
+- Do not drop container `resources.requests`. KEDA's cpu/memory triggers are a share
+  of the request; without it the autoscaler reports `<unknown>` and never scales.
+- The `ScaledObject` CRD is a hard dependency — a cluster without the KEDA add-on will
+  fail to reconcile these manifests.
+
 ## Validation baseline
 Run before commit when relevant:
 - `kustomize build manifests/environments/at23`
