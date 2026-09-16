@@ -6,6 +6,8 @@ resources:
   - apps
   - jobs
   - apim
+components:
+  - ../../common/large-node-pool
 patches:
   - path: secretstore-vault-url.yaml
 images:

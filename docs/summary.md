@@ -17,6 +17,25 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
+## Node pools and scheduling
+
+The at23, tt02, and prod entrypoints include the shared
+`manifests/common/large-node-pool` component. It selects
+`dis.altinn.cloud/node-class=large` and tolerates its `NoSchedule` taint only on
+the `reindex-dialogsearch-job` Pod template. Jobs created from that CronJob use
+the same settings. Regular Deployments and other CronJobs use the general pool.
+
+Core provisions generic D8 `largepool` nodes with a 0–10 autoscaling range in
+all three environments. The general pools are D4 in at23/prod and D2 in tt02.
+This accommodates reindex's 4-CPU request and lets the large pools return to zero
+between runs. The ACA reference uses Consumption for test/staging and adds a
+D8 profile with 3–10 nodes in prod/yt01; the AKS minimum is deliberately zero.
+
+Provision the pools before publishing the scheduling component. Yt01's core
+cluster is not defined in the linked core checkout, so its scheduling is left
+unchanged until that target is configured. See
+[Node sizing by environment](../README.md#node-sizing-by-environment) for details.
+
 ## Workflow failure alerts
 
 - `workflow-update-all-image-tags.yml` updates tags from `repository_dispatch` and explicitly dispatches `publish-flux-artifacts.yml` after pushing a change. Its failure notification depends on the entire update job, including input validation and the publish dispatch.
