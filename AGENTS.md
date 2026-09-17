@@ -54,13 +54,6 @@ If environment set changes, update all of:
   fail to reconcile these manifests.
 
 ## Validation baseline
-Large-node scheduling is defined by the `manifests/common/large-node-pool`
-component, included by at23, tt02, and prod. It selects and tolerates
-`dis.altinn.cloud/node-class=large` only for `reindex-dialogsearch-job`, matching
-core's generic D8 `largepool` (0–10 nodes). Keep regular apps and other jobs off
-the pool so it can scale to zero. Provision the core pools before publishing the
-component. Enable it for yt01 only after its target core cluster is configured.
-
 Run before commit when relevant:
 - `actionlint` for workflow changes
 - `kustomize build manifests/environments/at23`

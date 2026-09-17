@@ -11,40 +11,6 @@ This repository contains the Flux wiring and workload manifests for Dialogporten
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
-## Node sizing by environment
-
-[`manifests/common/large-node-pool`](manifests/common/large-node-pool/kustomization.yaml)
-is a Kustomize component used by at23, tt02, and prod. It adds
-`dis.altinn.cloud/node-class=large` as both a node selector and a `NoSchedule`
-toleration to **only `reindex-dialogsearch-job`**. Jobs created manually from
-that CronJob inherit the settings. Regular apps and other jobs use the general pool.
-
-The `core` repository owns the generic `largepool` and its matching label/taint.
-Every large pool uses `Standard_D8ads_v6`, autoscaling from **0 to 10 nodes**.
-Reindex requests 4 CPUs; a D4 node has less than 4 CPUs available for Pods after
-AKS reservations. Normal production app containers request 2 CPUs, so the core
-production general pool uses D4 nodes.
-
-| Manifest environment | Dialogporten ACA reference | Core general pool | Core large pool |
-| --- | --- | --- | --- |
-| at23 | test: Consumption | D4 | D8, 0–10 nodes |
-| tt02 | staging: Consumption | D2 | D8, 0–10 nodes |
-| prod | Consumption + D8, 3–10 nodes | D4 | D8, 0–10 nodes |
-| yt01 | Consumption + D8, 3–10 nodes | Target cluster not defined in core | Scheduling component not enabled |
-
-The ACA reference is `.azure/infrastructure/` and `.azure/applications/` in the
-Dialogporten application repo. Only `web-api-eu`, `web-api-so`, and `graphql`
-select ACA's dedicated D8 profile in prod and yt01; the service and jobs use
-Consumption. AKS placement follows current Pod requests, with larger nodes
-reserved for the reindex job and a zero-node minimum to avoid idle job capacity.
-
-Provision the core pools **before** publishing these manifests. When reindex
-starts, the autoscaler can create a large node; allow for provisioning time in
-the job deadline. Verify required platform DaemonSets tolerate the taint and
-confirm the pool scales down after the job completes. Keep the generic label and
-taint consistent across repositories. Enable the component for yt01 once its
-target core cluster and large pool are configured.
-
 ## OCI flow (high level)
 1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot` and app manifests from `manifests/`.
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
