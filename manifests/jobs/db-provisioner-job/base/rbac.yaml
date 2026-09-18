@@ -1,0 +1,36 @@
+# The job reads the ApplicationIdentity resources named in PROVISION_WORKLOADS to
+# resolve each workload's managed identity name and object id at runtime, so no
+# identity ids are checked into these manifests.
+#
+# The ServiceAccount "db-provisioner" is created by the dis-identity-operator with
+# the same name as the ApplicationIdentity, so it is not declared here.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: db-provisioner
+  labels:
+    app.kubernetes.io/name: db-provisioner-job
+    app.kubernetes.io/part-of: dialogporten
+rules:
+  - apiGroups:
+      - application.dis.altinn.cloud
+    resources:
+      - applicationidentities
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: db-provisioner
+  labels:
+    app.kubernetes.io/name: db-provisioner-job
+    app.kubernetes.io/part-of: dialogporten
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: db-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: db-provisioner

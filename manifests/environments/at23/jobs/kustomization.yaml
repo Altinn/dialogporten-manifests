@@ -7,3 +7,4 @@ resources:
   - reindex-search-job
   - aggregate-cost-metrics-job
   - custom-metrics-job
+  - db-provisioner-job
