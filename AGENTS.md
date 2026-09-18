@@ -73,6 +73,22 @@ If environment set changes, update all of:
   gets 403 on it and that probe fails. Linkerd matches paths case-sensitively and ASP.NET does
   not, so `/Health/liveness` still arrives via `/`: the split is not access control.
 
+## Database role provisioning job
+- `manifests/jobs/db-provisioner-job/base/` holds the suspended `db-provisioner-job`
+  `CronJob`, the `db-provisioner` `ApplicationIdentity`, its `Role`/`RoleBinding`, and the
+  `db-provisioner-runtime` ConfigMap. Run it on demand with
+  `kubectl create job --from=cronjob/db-provisioner-job db-provisioner-<date> -n product-dialogporten`.
+- Do not create a `ServiceAccount` for it. The dis-identity-operator creates one with the
+  same name as the `ApplicationIdentity` (Altinn/altinn-platform RFC 0004).
+- Do not add a secret to this job. It authenticates with its workload identity, which is
+  why the pod template carries `azure.workload.identity/use: "true"`.
+- Workload lists are environment data: keep them in the overlay's `db-provisioner-runtime`
+  patch (`PGHOST`, `PROVISION_WORKLOADS`), never in the base. Identity ids stay out of the
+  repo — the job reads them from the `ApplicationIdentity` status.
+- Adding an environment means adding the overlay, listing it in that env's
+  `jobs/kustomization.yaml`, and adding `ghcr.io/altinn/dialogporten-db-provisioner` to
+  that env's `images:` block.
+
 ## Validation baseline
 Run before commit when relevant:
 - `actionlint` for workflow changes

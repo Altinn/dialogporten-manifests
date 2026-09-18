@@ -6,3 +6,4 @@ resources:
   - sync-subject-resource-mappings-job
   - reindex-dialogsearch-job
   - aggregate-cost-metrics-job
+  - db-provisioner-job
