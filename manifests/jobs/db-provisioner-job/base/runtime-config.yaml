@@ -1,0 +1,12 @@
+# Per-environment inputs for the db-provisioner job. Both values are placeholders
+# in the base and are patched by each environment overlay.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-provisioner-runtime
+  labels:
+    app.kubernetes.io/name: db-provisioner-job
+    app.kubernetes.io/part-of: dialogporten
+data:
+  PGHOST: set-by-env
+  PROVISION_WORKLOADS: "[]"
