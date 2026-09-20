@@ -68,6 +68,18 @@ If environment set changes, update all of:
 - Adding an environment means adding the overlay, listing it in that env's
   `jobs/kustomization.yaml`, and adding `ghcr.io/altinn/dialogporten-db-provisioner` to
   that env's `images:` block.
+- Before the first run, follow [README prerequisites](README.md#first-run-prerequisites)
+  and the linked provisioner bootstrap runbook. Register the AKS identity as an Entra
+  administrator, create the workload identities, and apply migrations first.
+- pgAudit is mandatory in the target database. Preserve existing preload libraries
+  when adding `pgaudit`; restart manually during an agreed maintenance window if the
+  setting changes, then install and verify the extension in `dialogporten`. Production
+  setup and any restart are manual operations, never part of manifest reconciliation.
+- Pin only a verified, published provisioner image containing the required code.
+  The initial `at23` tag `1.121.1-1de2b7c` must be replaced by the exact tag from a
+  successful publish containing Dialogporten PR #4407 before first execution.
+  Do not invent a replacement when publication is pending or inaccessible; report
+  the blocker and keep the CronJob suspended. Kustomize does not check image availability.
 
 ## Validation baseline
 Run before commit when relevant:
