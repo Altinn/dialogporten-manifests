@@ -53,6 +53,34 @@ If environment set changes, update all of:
 - The `ScaledObject` CRD is a hard dependency — a cluster without the KEDA add-on will
   fail to reconcile these manifests.
 
+## Database role provisioning job
+- `manifests/jobs/db-provisioner-job/base/` holds the suspended `db-provisioner-job`
+  `CronJob`, the `db-provisioner` `ApplicationIdentity`, its `Role`/`RoleBinding`, and the
+  `db-provisioner-runtime` ConfigMap. Run it on demand with
+  `kubectl create job --from=cronjob/db-provisioner-job db-provisioner-<date> -n product-dialogporten`.
+- Do not create a `ServiceAccount` for it. The dis-identity-operator creates one with the
+  same name as the `ApplicationIdentity` (Altinn/altinn-platform RFC 0004).
+- Do not add a secret to this job. It authenticates with its workload identity, which is
+  why the pod template carries `azure.workload.identity/use: "true"`.
+- Workload lists are environment data: keep them in the overlay's `db-provisioner-runtime`
+  patch (`PGHOST`, `PROVISION_WORKLOADS`), never in the base. Identity ids stay out of the
+  repo — the job reads them from the `ApplicationIdentity` status.
+- Adding an environment means adding the overlay, listing it in that env's
+  `jobs/kustomization.yaml`, and adding `ghcr.io/altinn/dialogporten-db-provisioner` to
+  that env's `images:` block.
+- Before the first run, follow [README prerequisites](README.md#first-run-prerequisites)
+  and the linked provisioner bootstrap runbook. Register the AKS identity as an Entra
+  administrator, create the workload identities, and apply migrations first.
+- pgAudit is mandatory in the target database. Preserve existing preload libraries
+  when adding `pgaudit`; restart manually during an agreed maintenance window if the
+  setting changes, then install and verify the extension in `dialogporten`. Production
+  setup and any restart are manual operations, never part of manifest reconciliation.
+- Pin only a verified, published provisioner image containing the required code.
+  The initial `at23` tag `1.121.1-1de2b7c` must be replaced by the exact tag from a
+  successful publish containing Dialogporten PR #4407 before first execution.
+  Do not invent a replacement when publication is pending or inaccessible; report
+  the blocker and keep the CronJob suspended. Kustomize does not check image availability.
+
 ## Validation baseline
 Run before commit when relevant:
 - `actionlint` for workflow changes

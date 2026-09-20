@@ -1,0 +1,17 @@
+# Workload identity for the db-provisioner job.
+#
+# The dis-identity-operator creates the Azure managed identity
+# "product-dialogporten-db-provisioner" (namespace + name) and a ServiceAccount
+# with the same name as this resource.
+#
+# That managed identity must be registered as a Microsoft Entra administrator on
+# the PostgreSQL server before the job can run. The registration is part of the
+# infrastructure deployment in the dialogporten repo, not of these manifests.
+apiVersion: application.dis.altinn.cloud/v1alpha1
+kind: ApplicationIdentity
+metadata:
+  name: db-provisioner
+  labels:
+    app.kubernetes.io/name: db-provisioner-job
+    app.kubernetes.io/part-of: dialogporten
+spec: {}

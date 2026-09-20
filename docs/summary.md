@@ -17,6 +17,61 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
+## Database role provisioning
+
+`manifests/jobs/db-provisioner-job/base/` defines a suspended `CronJob`
+(`db-provisioner-job`) that registers a PostgreSQL login role per AKS workload identity
+and grants it a least-privilege profile role. It is run on demand, like
+`web-api-migration-job`:
+
+```
+kubectl create job --from=cronjob/db-provisioner-job db-provisioner-<date> -n product-dialogporten
+```
+
+Complete the [first run prerequisites](../README.md#first-run-prerequisites) before
+using this command. The [provisioner bootstrap runbook](https://github.com/Altinn/dialogporten/blob/3a15eb561e313e557cb63144c4e134f6d89d4129/.azure/modules/postgreSql/provisioner/README.md#bootstrap-and-rollout)
+describes the corresponding database setup.
+
+The run is additive and idempotent: missing roles and grants are created, existing ones
+are left as they are, so re-running after adding a workload is safe.
+
+The base ships the `ApplicationIdentity` `db-provisioner`, a `Role`/`RoleBinding` letting
+it read `applicationidentities`, the `db-provisioner-runtime` ConfigMap with placeholder
+values, and the `CronJob` itself. Environment overlays patch the ConfigMap:
+
+| Key | Meaning |
+| --- | --- |
+| `PGHOST` | PostgreSQL server for that environment |
+| `PROVISION_WORKLOADS` | JSON array of `{ applicationIdentity, profile }` entries |
+
+Each entry names an `ApplicationIdentity` in the same namespace; the job resolves its
+managed identity name and object id from the resource status at runtime, so identity ids
+are never checked in.
+
+Notes:
+- The pod carries `azure.workload.identity/use: "true"` and mounts no secret — it
+  authenticates as its own identity.
+- That identity (`product-dialogporten-db-provisioner`) must be a Microsoft Entra
+  administrator on the PostgreSQL server. The registration lives in the `dialogporten`
+  repo's infrastructure deployment, not here, and is a prerequisite for the job.
+- The image `ghcr.io/altinn/dialogporten-db-provisioner` is published by the
+  `dialogporten` repo and pinned in `manifests/environments/<env>/kustomization.yaml`
+  like the other images. Before the first run, replace the initial `at23` pin
+  `1.121.1-1de2b7c` with the exact tag from a successful provisioner image publish
+  containing Dialogporten PR #4407. Verify that image can be pulled; Kustomize
+  validation cannot establish this.
+- pgAudit is mandatory: allowlist `PGAUDIT`, add `pgaudit` to the existing
+  `shared_preload_libraries` without dropping other libraries, manually restart
+  during an agreed maintenance window if the setting changes, and install the
+  extension in **dialogporten**. Verify the active preload value and installed
+  extension before provisioning. Production setup and any restart are manual;
+  the job only checks these prerequisites and fails if they are missing.
+- Keep the CronJob suspended. Create an on-demand Job only after the image,
+  administrator registration, workload identities, migrations, and pgAudit are
+  ready; verify a fresh-session login and auditing before switching workloads
+  to Entra token authentication.
+- Wired for `at23` only so far.
+
 ## Workflow failure alerts
 
 - `workflow-update-all-image-tags.yml` updates tags from `repository_dispatch` and explicitly dispatches `publish-flux-artifacts.yml` after pushing a change. Its failure notification depends on the entire update job, including input validation and the publish dispatch.
