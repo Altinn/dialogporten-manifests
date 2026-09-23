@@ -144,6 +144,23 @@ spec:
     name: traefik-gateway
     namespace: traefik   
   rules:
+  # Native path: what the edge proxy sends once it strips /dialogporten.
+  - backendRefs:
+    - group: ""
+      kind: Service
+      name: graphql
+      port: 80
+    filters:
+    - requestHeaderModifier:
+        set:
+        - name: l5d-dst-override
+          value: graphql.product-dialogporten.svc.cluster.local:80
+      type: RequestHeaderModifier
+    matches:
+    - path:
+        type: PathPrefix
+        value: /graphql
+  # Transitional: the edge proxy still forwards /dialogporten. Remove once it strips.
   - backendRefs:
     - group: ""
       kind: Service
