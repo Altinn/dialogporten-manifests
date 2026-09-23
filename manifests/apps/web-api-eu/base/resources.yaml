@@ -156,7 +156,7 @@ spec:
       urlRewrite:
         path:
           type: ReplacePrefixMatch
-          replacePrefixMatch: /enduser
+          replacePrefixMatch: /
     - requestHeaderModifier:
         set:
         - name: l5d-dst-override
