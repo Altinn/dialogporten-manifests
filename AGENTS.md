@@ -62,9 +62,16 @@ If environment set changes, update all of:
   keep the `^...$` anchors: a bare `enduser` pattern also matches the service-owner
   `endusercontext` endpoints. Traefik ranks regex routes by pattern length rather than
   specificity, so check precedence when adding a route that overlaps it.
-- Keep the prefix out of the apps (no `UsePathBase`). Linkerd authorizes by path before the app
-  sees the request, so `/dialogporten/health` reaching a pod would bypass the kubelet-only
-  `/health` policy.
+- Keep the prefix out of the apps (no `UsePathBase`): the edge owns `/dialogporten`, and the
+  Linkerd routes in `manifests/common/base/linkerd-policies.yaml` match native paths.
+- Only the probe paths (`/health/startup`, `/health/liveness`, `/health/readiness`) are
+  reserved for the kubelet, as `Exact` matches; `/health` and `/health/deep` are open to the
+  same callers as the API, including external availability checks through Traefik. Keep probe
+  matches exact and longer than any overlapping match: before Linkerd edge-26.9.1 the proxy
+  ranks path matches by length alone. A new probe path must be added to the
+  `dialogporten-health` route in `manifests/common/base/linkerd-policies.yaml`, or the kubelet
+  gets 403 on it and that probe fails. Linkerd matches paths case-sensitively and ASP.NET does
+  not, so `/Health/liveness` still arrives via `/`: the split is not access control.
 
 ## Validation baseline
 Run before commit when relevant:
