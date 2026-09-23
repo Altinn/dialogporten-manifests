@@ -53,6 +53,19 @@ If environment set changes, update all of:
 - The `ScaledObject` CRD is a hard dependency — a cluster without the KEDA add-on will
   fail to reconcile these manifests.
 
+## Routing model
+- The edge proxy strips the public `/dialogporten` mount point; the HTTPRoutes on
+  `dialogporten.<env>.dis-core.altinn.cloud` match the apps' native paths without rewrites.
+  See `docs/summary.md` for the path table.
+- Match with `PathPrefix`. The exception is `web-api-eu`, whose anchored `RegularExpression`
+  catches every API version. Traefik evaluates regex with Go's unanchored `MatchString`, so
+  keep the `^...$` anchors: a bare `enduser` pattern also matches the service-owner
+  `endusercontext` endpoints. Traefik ranks regex routes by pattern length rather than
+  specificity, so check precedence when adding a route that overlaps it.
+- Keep the prefix out of the apps (no `UsePathBase`). Linkerd authorizes by path before the app
+  sees the request, so `/dialogporten/health` reaching a pod would bypass the kubelet-only
+  `/health` policy.
+
 ## Validation baseline
 Run before commit when relevant:
 - `actionlint` for workflow changes

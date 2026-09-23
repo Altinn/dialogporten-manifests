@@ -26,6 +26,21 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
 Change-maintenance rules are defined in `AGENTS.md`.
 
+## Routing
+Public traffic reaches Dialogporten through the edge proxy for `platform.<env>.altinn.cloud`,
+which owns the `/dialogporten` mount point: it strips the prefix and forwards to
+`dialogporten.<env>.dis-core.altinn.cloud`. Dialogporten is not published through APIM on
+dis-core. On its own host, Traefik routes the apps' native paths without rewrites, like every
+other product on dis-core; the apps never strip `/dialogporten` themselves.
+
+| Path | App |
+| --- | --- |
+| `/api/v{n}/enduser`, any API version | `web-api-eu` |
+| `/graphql` (including `/graphql/stream`) | `graphql` |
+| `/` (everything else) | `web-api-so` |
+
+`service` serves nothing but health checks, so it has no route.
+
 ## Scaling model
 Apps autoscale with KEDA (`ScaledObject`, `keda.sh/v1alpha1`) rather than a plain
 `HorizontalPodAutoscaler`. This mirrors the Container Apps `scale` rules in the

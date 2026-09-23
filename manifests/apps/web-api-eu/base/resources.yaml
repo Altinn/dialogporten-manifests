@@ -152,11 +152,6 @@ spec:
       name: web-api-eu
       port: 80
     filters:
-    - type: URLRewrite
-      urlRewrite:
-        path:
-          type: ReplacePrefixMatch
-          replacePrefixMatch: /enduser
     - requestHeaderModifier:
         set:
         - name: l5d-dst-override
@@ -164,8 +159,8 @@ spec:
       type: RequestHeaderModifier
     matches:
     - path:
-        type: PathPrefix
-        value: /dialogporten/enduser
+        type: RegularExpression
+        value: '^/api/v[0-9]+/enduser(/.*)?$'
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

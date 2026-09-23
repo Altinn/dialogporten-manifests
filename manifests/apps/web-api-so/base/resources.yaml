@@ -152,11 +152,6 @@ spec:
       name: web-api-so
       port: 80
     filters:
-    - type: URLRewrite
-      urlRewrite:
-        path:
-          type: ReplacePrefixMatch
-          replacePrefixMatch: /
     - requestHeaderModifier:
         set:
         - name: l5d-dst-override
@@ -165,7 +160,7 @@ spec:
     matches:
     - path:
         type: PathPrefix
-        value: /dialogporten
+        value: /
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
