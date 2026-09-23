@@ -41,6 +41,14 @@ other product on dis-core; the apps never strip `/dialogporten` themselves.
 
 `service` serves nothing but health checks, so it has no route.
 
+Linkerd reserves only the kubelet's probe paths (`/health/startup`, `/health/liveness`,
+`/health/readiness`) for the node network (`manifests/common/base/linkerd-policies.yaml`).
+Everything else, including `/health` and `/health/deep`, is open to the same callers as the
+API, so availability checks from outside (for example through the dis edge) can read
+`web-api-so`'s health via the `/` route. The split keeps node traffic off the API; it does not
+keep other callers off the probe paths, because Linkerd matches paths case-sensitively and
+ASP.NET routing does not (`/Health/liveness` arrives via `/`).
+
 ## Scaling model
 Apps autoscale with KEDA (`ScaledObject`, `keda.sh/v1alpha1`) rather than a plain
 `HorizontalPodAutoscaler`. This mirrors the Container Apps `scale` rules in the

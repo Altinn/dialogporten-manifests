@@ -1,15 +1,23 @@
 # Linkerd inbound authorization for dialogporten pods (port 8080).
 #
 # defaultInboundPolicy is deny, so :8080 is default-deny. Access is scoped per
-# HTTP route, so the kubelet reaches only health — never the application paths:
+# HTTP route, so the kubelet reaches only its probe paths — never the application:
 #   - "/"        -> mesh (mTLS) identity: internal dialogporten components, the
-#                   arbeidsflate BFF, and traefik ingress. This is all real traffic.
-#   - "/health"  -> the kubelet, for the liveness/readiness/startup probes, which
-#                   hit :8080 unmeshed from the node. Scoping to the health route
-#                   keeps node-sourced traffic off the API surface.
+#                   arbeidsflate BFF, and traefik ingress. This is all real traffic,
+#                   including /health and /health/deep for availability checks from
+#                   outside (e.g. through the dis edge proxy).
+#   - exactly /health/startup, /health/liveness, /health/readiness -> the kubelet,
+#                   for the probes, which hit :8080 unmeshed from the node. Exact
+#                   paths keep node-sourced traffic off everything else.
+#
+# Keep the probe matches Exact and longer than any overlapping match: before Linkerd
+# edge-26.9.1 the proxy ranks path matches by length alone, so an Exact match ties
+# an equally long PathPrefix instead of beating it (linkerd2-proxy#4604). Linkerd
+# matches paths case-sensitively and ASP.NET routing does not, so "/Health/liveness"
+# arrives via "/": this split keeps node traffic off the API, it does not hide health.
 #
 # Defining HTTPRoutes replaces the Server's default catch-all, so "/" is an
-# explicit catch-all (every non-health request matches it). Node subnet on
+# explicit catch-all (every request except the probe paths matches it). Node subnet on
 # dis-core clusters is 10.205.0.0/16 (+ fd12:2291:d70a::/48), verified on
 # at22/at23 — deliberately not the pod subnet (10.240.0.0/16).
 apiVersion: policy.linkerd.io/v1beta3
@@ -52,7 +60,7 @@ spec:
     - cidr: 10.205.0.0/16
     - cidr: fd12:2291:d70a::/48
 ---
-# Catch-all route: all non-health traffic, authorized by mesh identity below.
+# Catch-all route: everything except the probe paths, authorized by mesh identity below.
 apiVersion: policy.linkerd.io/v1beta3
 kind: HTTPRoute
 metadata:
@@ -70,7 +78,8 @@ spec:
             type: PathPrefix
             value: /
 ---
-# Health route: liveness/readiness/startup probes, authorized for the kubelet below.
+# Probe route: exactly the startup/liveness/readiness paths the deployments probe,
+# authorized for the kubelet below.
 apiVersion: policy.linkerd.io/v1beta3
 kind: HTTPRoute
 metadata:
@@ -85,8 +94,14 @@ spec:
   rules:
     - matches:
         - path:
-            type: PathPrefix
-            value: /health
+            type: Exact
+            value: /health/startup
+        - path:
+            type: Exact
+            value: /health/liveness
+        - path:
+            type: Exact
+            value: /health/readiness
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
