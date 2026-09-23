@@ -159,8 +159,8 @@ spec:
       type: RequestHeaderModifier
     matches:
     - path:
-        type: PathPrefix
-        value: /api/v1/enduser
+        type: RegularExpression
+        value: '^/api/v[0-9]+/enduser(/.*)?$'
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
