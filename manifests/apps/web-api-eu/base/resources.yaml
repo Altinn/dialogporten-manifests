@@ -132,6 +132,9 @@ spec:
       port: 80
       targetPort: 8080
 ---
+# Only the end-user API surface is routed here; everything else under /dialogporten
+# falls through to web-api-so's catch-all route. The prefix is version-pinned, so a
+# future /api/v2/enduser needs its own rule or it silently lands on web-api-so.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -156,7 +159,7 @@ spec:
       urlRewrite:
         path:
           type: ReplacePrefixMatch
-          replacePrefixMatch: /
+          replacePrefixMatch: /api/v1/enduser
     - requestHeaderModifier:
         set:
         - name: l5d-dst-override
@@ -165,7 +168,7 @@ spec:
     matches:
     - path:
         type: PathPrefix
-        value: /dialogporten/enduser
+        value: /dialogporten/api/v1/enduser
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
