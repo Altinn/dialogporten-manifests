@@ -161,26 +161,6 @@ spec:
     - path:
         type: PathPrefix
         value: /
-  - backendRefs:
-    - group: ""
-      kind: Service
-      name: web-api-so
-      port: 80
-    filters:
-    - type: URLRewrite
-      urlRewrite:
-        path:
-          type: ReplacePrefixMatch
-          replacePrefixMatch: /
-    - requestHeaderModifier:
-        set:
-        - name: l5d-dst-override
-          value: web-api-so.product-dialogporten.svc.cluster.local:80
-      type: RequestHeaderModifier
-    matches:
-    - path:
-        type: PathPrefix
-        value: /dialogporten
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

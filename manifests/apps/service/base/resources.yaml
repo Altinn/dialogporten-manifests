@@ -132,36 +132,6 @@ spec:
       port: 80
       targetPort: 8080
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: service
-  labels:
-    app.kubernetes.io/name: service
-    app.kubernetes.io/part-of: dialogporten
-spec:
-  parentRefs:
-  - group: gateway.networking.k8s.io
-    kind: Gateway
-    name: traefik-gateway
-    namespace: traefik   
-  rules:
-  - backendRefs:
-    - group: ""
-      kind: Service
-      name: service
-      port: 80
-    filters:
-    - requestHeaderModifier:
-        set:
-        - name: l5d-dst-override
-          value: service.product-dialogporten.svc.cluster.local:80
-      type: RequestHeaderModifier
-    matches:
-    - path:
-        type: PathPrefix
-        value: /dialogporten/service
----
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:

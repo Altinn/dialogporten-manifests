@@ -159,26 +159,6 @@ spec:
     - path:
         type: PathPrefix
         value: /graphql
-  - backendRefs:
-    - group: ""
-      kind: Service
-      name: graphql
-      port: 80
-    filters:
-    - type: URLRewrite
-      urlRewrite:
-        path:
-          type: ReplacePrefixMatch
-          replacePrefixMatch: /graphql
-    - requestHeaderModifier:
-        set:
-        - name: l5d-dst-override
-          value: graphql.product-dialogporten.svc.cluster.local:80
-      type: RequestHeaderModifier
-    matches:
-    - path:
-        type: PathPrefix
-        value: /dialogporten/graphql
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

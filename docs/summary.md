@@ -28,10 +28,11 @@ Change-maintenance rules are defined in `AGENTS.md`.
 
 ## Routing
 Public traffic reaches Dialogporten through the edge proxy for `platform.<env>.altinn.cloud`,
-which owns the `/dialogporten` mount point and forwards to
+which owns the `/dialogporten` mount point: it strips the prefix and forwards to
 `dialogporten.<env>.dis-core.altinn.cloud`. Dialogporten is not published through APIM on
-dis-core. On its own host, Traefik routes the apps' native paths by `PathPrefix`, like every
-other product on dis-core; the apps never strip `/dialogporten` themselves.
+dis-core. On its own host, Traefik routes the apps' native paths by `PathPrefix` without
+rewrites, like every other product on dis-core; the apps never strip `/dialogporten`
+themselves.
 
 | Path prefix | App |
 | --- | --- |
@@ -39,8 +40,7 @@ other product on dis-core; the apps never strip `/dialogporten` themselves.
 | `/graphql` (including `/graphql/stream`) | `graphql` |
 | `/` (everything else) | `web-api-so` |
 
-Each route also has a transitional `/dialogporten/...` rule that strips the prefix, for as
-long as the edge proxy still forwards it. Remove those rules once the edge strips.
+`service` serves nothing but health checks, so it has no route.
 
 ## Scaling model
 Apps autoscale with KEDA (`ScaledObject`, `keda.sh/v1alpha1`) rather than a plain
