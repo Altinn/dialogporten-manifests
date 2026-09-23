@@ -11,3 +11,7 @@ spec:
     kind: OCIRepository
     name: dialogporten-manifests
   targetNamespace: product-dialogporten
+  # Success events fire only when workloads are healthy (kstatus), not merely applied;
+  # required for HealthCheckFailed to be reachable. Timeout must exceed worst normal rollout.
+  timeout: 5m
+  wait: true
