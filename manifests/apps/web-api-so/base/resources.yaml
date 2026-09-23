@@ -132,8 +132,6 @@ spec:
       port: 80
       targetPort: 8080
 ---
-# Catch-all for the Dialogporten host: web-api-eu and graphql claim longer prefixes,
-# everything else lands here.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -148,7 +146,6 @@ spec:
     name: traefik-gateway
     namespace: traefik   
   rules:
-  # Native path: what the edge proxy sends once it strips /dialogporten.
   - backendRefs:
     - group: ""
       kind: Service
@@ -164,7 +161,6 @@ spec:
     - path:
         type: PathPrefix
         value: /
-  # Transitional: the edge proxy still forwards /dialogporten. Remove once it strips.
   - backendRefs:
     - group: ""
       kind: Service

@@ -144,7 +144,6 @@ spec:
     name: traefik-gateway
     namespace: traefik   
   rules:
-  # Native path: what the edge proxy sends once it strips /dialogporten.
   - backendRefs:
     - group: ""
       kind: Service
@@ -160,7 +159,6 @@ spec:
     - path:
         type: PathPrefix
         value: /graphql
-  # Transitional: the edge proxy still forwards /dialogporten. Remove once it strips.
   - backendRefs:
     - group: ""
       kind: Service

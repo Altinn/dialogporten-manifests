@@ -132,9 +132,6 @@ spec:
       port: 80
       targetPort: 8080
 ---
-# End-user API only; everything else on this host falls through to web-api-so. The prefix
-# is version-pinned, so a future /api/v2/enduser needs its own rules or it silently lands
-# on web-api-so.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -149,7 +146,6 @@ spec:
     name: traefik-gateway
     namespace: traefik   
   rules:
-  # Native path: what the edge proxy sends once it strips /dialogporten.
   - backendRefs:
     - group: ""
       kind: Service
@@ -165,7 +161,6 @@ spec:
     - path:
         type: PathPrefix
         value: /api/v1/enduser
-  # Transitional: the edge proxy still forwards /dialogporten. Remove once it strips.
   - backendRefs:
     - group: ""
       kind: Service
