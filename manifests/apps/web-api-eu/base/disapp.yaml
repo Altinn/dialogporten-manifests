@@ -1,0 +1,116 @@
+apiVersion: application.dis.altinn.cloud/v1alpha1
+kind: DisApp
+metadata:
+  name: web-api-eu
+  labels:
+    app.kubernetes.io/name: web-api-eu
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  image: ghcr.io/altinn/dialogporten-webapi:set-by-ci
+
+  runtime:
+    ASPNETCORE_URLS: "http://+:8080"
+    DIALOGPORTEN_ENVIRONMENT: set-by-env
+
+  secrets:
+    secretStoreRef: dialogporten-azure-kv
+    refreshInterval: 1h
+    data:
+      - secretKey: Infrastructure__DialogDbConnectionString
+        remoteRef: dialogportenAdoConnectionString
+      - secretKey: Infrastructure__Redis__ConnectionString
+        remoteRef: dialogportenRedisConnectionString
+
+  ingress:
+    hostname: set-by-env
+    pathPrefix: /dialogporten/enduser
+    rewriteTo: /enduser
+
+  autoscaling:
+    maxReplicas: 2
+
+  apim:
+    backends:
+      - name: dialogporten-web-api-eu
+        title: dialogporten-web-api-eu
+        description: Dialogporten End User Web API
+        url: set-by-env
+    apis:
+      - name: dialogporten-web-api-eu
+        displayName: Dialogporten Web API EU
+        description: Dialogporten End User Web API
+        path: dialogporten/enduser
+        apiType: http
+        versions:
+          - displayName: Dialogporten Web API EU v1
+            isCurrent: true
+            subscriptionRequired: false
+            protocols:
+              - https
+            contentFormat: openapi+json
+            content: |
+              {
+                "openapi": "3.0.1",
+                "info": { "title": "dialogporten-web-api-eu", "version": "1.0" },
+                "paths": {
+                  "/*": {
+                    "get": { "operationId": "get", "responses": { "200": { "description": "" } } },
+                    "post": { "operationId": "post", "responses": { "200": { "description": "" } } },
+                    "put": { "operationId": "put", "responses": { "200": { "description": "" } } },
+                    "patch": { "operationId": "patch", "responses": { "200": { "description": "" } } },
+                    "delete": { "operationId": "delete", "responses": { "200": { "description": "" } } },
+                    "head": { "operationId": "head", "responses": { "200": { "description": "" } } },
+                    "options": { "operationId": "options", "responses": { "200": { "description": "" } } }
+                  }
+                }
+              }
+            serviceUrl: set-by-env
+            policies:
+              policyValues:
+                - name: backendID
+                  idFromBackend:
+                    name: dialogporten-web-api-eu
+                - name: maintenanceEnabled
+                  value: "false"
+                - name: maintenanceBypassKey
+                  value: ""
+              policyContent: |
+                <policies>
+                    <inbound>
+                        <set-backend-service backend-id="{{.backendID}}" />
+                        <choose>
+                            <when condition="@(context.Variables.GetValueOrDefault&lt;string&gt;(&quot;maintenanceMode&quot;, &quot;{{.maintenanceEnabled}}&quot;) == &quot;true&quot;)">
+                                <set-variable name="bypassKey" value="{{.maintenanceBypassKey}}" />
+                                <set-variable name="bypassHeader" value="@(context.Request.Headers.GetValueOrDefault(&quot;x-dialogporten-maintenance-bypass&quot;, &quot;&quot;))" />
+                                <choose>
+                                    <when condition="@(context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassKey&quot;) != &quot;&quot; &amp;&amp; context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassHeader&quot;) != &quot;&quot; &amp;&amp; context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassKey&quot;) == context.Variables.GetValueOrDefault&lt;string&gt;(&quot;bypassHeader&quot;))">
+                                        <set-header name="x-dialogporten-maintenance-bypass" exists-action="delete" />
+                                    </when>
+                                    <otherwise>
+                                        <return-response>
+                                            <set-status code="503" reason="Service Unavailable" />
+                                            <set-header name="Content-Type" exists-action="override">
+                                                <value>application/json</value>
+                                            </set-header>
+                                            <set-header name="Retry-After" exists-action="override">
+                                                <value>300</value>
+                                            </set-header>
+                                            <set-body>{"error": "Service temporarily unavailable for maintenance. Please try again later."}</set-body>
+                                        </return-response>
+                                    </otherwise>
+                                </choose>
+                            </when>
+                        </choose>
+                        <base />
+                    </inbound>
+                    <backend>
+                        <base />
+                    </backend>
+                    <outbound>
+                        <base />
+                    </outbound>
+                    <on-error>
+                        <base />
+                    </on-error>
+                </policies>
+              policyFormat: xml
