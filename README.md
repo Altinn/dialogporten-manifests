@@ -1,20 +1,23 @@
 # Dialogporten Flux manifests
 
-This repository contains the Flux wiring and workload manifests for Dialogporten on DIS. Workloads are now packaged per environment as OCI artifacts and pulled by Flux.
+This repository contains the Flux wiring and workload manifests for Dialogporten on DIS. CI publishes OCI artifacts with environment tags; Flux selects the matching environment overlay from each artifact.
 
 ## Layout
 - `manifests/`: shared bases (`apps/`, `jobs/`, `common/`) plus per-environment overlays collected under `manifests/environments/<env>/`.
 - `manifests/apps/<app>/base/`: canonical per-app base manifests (`web-api-eu`, `web-api-so`, `graphql`, `service`), aligned with job base layout (`manifests/jobs/<job>/base/`).
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays that only patch app bases.
 - `manifests/environments/<env>/kustomization.yaml`: concise env entrypoint that pulls all app/job overlays for that env and sets image tags.
-- `flux/syncroot/`: bootstrap wiring (namespace, `OCIRepository`, and a Kustomization that targets the chosen `flux-system/<env>` path).
+- `flux/syncroot/`: bootstrap wiring (`OCIRepository` and a Kustomization that targets `./environments/<env>` inside the app artifact).
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
 ## OCI flow (high level)
-1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot` and app manifests from `manifests/`.
-2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
-3. Flux pulls that OCI artifact, and the environment-specific `Kustomization` in `flux/syncroot/<env>` targets the `./environments/<env>` path within the artifact.
+
+1. Every push to `main` builds the app artifact from `manifests/` and tags it as `dialogporten/dialogporten-sync:<env>` for all four environments: `at23`, `tt02`, `yt01`, and `prod`.
+2. After the app tags are published, CI builds the syncroot from `flux/syncroot` and publishes the same four tags under `dialogporten/syncroot:<env>`. Each artifact is built once; its environment tags point to the same digest. Manual publishing from `main` follows the same flow.
+3. The core bootstrap consumes `dialogporten/syncroot:<env>` at `./<env>`. That overlay selects `dialogporten/dialogporten-sync:<env>` and applies `./environments/<env>` inside the app artifact.
+
+Publishing refreshes all environment tags on every run. Each environment keeps the runtime image versions declared in its own overlay. The former app artifact tag `:main` is no longer updated; application tags are published first so the syncroot can safely switch consumers to environment tags.
 
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`.
 

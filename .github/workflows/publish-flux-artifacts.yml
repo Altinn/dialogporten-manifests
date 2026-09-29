@@ -21,11 +21,9 @@ concurrency:
 jobs:
   publish-syncroot:
     name: Publish syncroot artifact
+    needs: publish-app-manifests
     if: github.ref == 'refs/heads/main'
     runs-on: self-hosted
-    strategy:
-      matrix:
-        tag: [at23]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,11 +82,8 @@ jobs:
             exit 1
           }
 
-          # flux/syncroot/base pins spec.path to one environment, so every overlay
-          # must patch it. An overlay that forgets would publish a syncroot that
-          # deploys the base environment's manifests instead of its own. Assert on
-          # the rendered path: a patch aimed at the wrong resource name parses fine
-          # but never applies, leaving the base's hardcoded spec.path in place.
+          # Check rendered values: a patch aimed at the wrong resource name
+          # parses successfully but leaves the base environment selected.
           for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
             overlay="./flux/syncroot/${env}/kustomization.yaml"
@@ -98,9 +93,16 @@ jobs:
               exit 1
             fi
 
-            selected=$(render_kustomize "./flux/syncroot/${env}" | sed -n 's/^[[:space:]]*path:[[:space:]]*//p')
+            rendered=$(render_kustomize "./flux/syncroot/${env}")
+            selected=$(printf '%s\n' "$rendered" | sed -n 's/^[[:space:]]*path:[[:space:]]*//p')
             if [ "$selected" != "./environments/${env}" ]; then
               echo "::error::./flux/syncroot/${env}/ selects '${selected:-<none>}' but must select ./environments/${env}"
+              exit 1
+            fi
+
+            selected_tag=$(printf '%s\n' "$rendered" | sed -n 's/^[[:space:]]*tag:[[:space:]]*//p')
+            if [ "$selected_tag" != "$env" ]; then
+              echo "::error::./flux/syncroot/${env}/ selects tag '${selected_tag:-<none>}' but must select ${env}"
               exit 1
             fi
           done
@@ -109,11 +111,25 @@ jobs:
         uses: Altinn/altinn-platform/actions/flux/build-push-image@523f141da4f116fdd7331585396d83a5d7ade7ea # main
         with:
           image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
-          tag: ${{ matrix.tag }}
           workdir: ./flux/syncroot
           azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
           azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}
+
+      - name: Tag syncroot artifact for all environments
+        env:
+          ARTIFACT_NAME: ${{ env.SYNCROOT_ARTIFACT_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          short_sha=$(git rev-parse --short HEAD)
+          for dir in ./manifests/environments/*/; do
+            environment=$(basename "$dir")
+            flux tag artifact "oci://altinncr.azurecr.io/${ARTIFACT_NAME}:${short_sha}" \
+              --provider=azure \
+              --tag "$environment"
+          done
 
   publish-app-manifests:
     name: Publish app manifests artifact
@@ -212,11 +228,25 @@ jobs:
         uses: Altinn/altinn-platform/actions/flux/build-push-image@523f141da4f116fdd7331585396d83a5d7ade7ea # main
         with:
           image_name: ${{ env.APP_ARTIFACT_NAME }}
-          tag: main
           workdir: ./manifests
           azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
           azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}
+
+      - name: Tag app manifests artifact for all environments
+        env:
+          ARTIFACT_NAME: ${{ env.APP_ARTIFACT_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          short_sha=$(git rev-parse --short HEAD)
+          for dir in ./manifests/environments/*/; do
+            environment=$(basename "$dir")
+            flux tag artifact "oci://altinncr.azurecr.io/${ARTIFACT_NAME}:${short_sha}" \
+              --provider=azure \
+              --tag "$environment"
+          done
 
   notify-failure:
     name: Send Slack message on failure

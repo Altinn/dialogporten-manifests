@@ -8,4 +8,4 @@ spec:
   provider: azure
   url: oci://altinncr.azurecr.io/dialogporten/dialogporten-sync
   ref:
-    tag: main
+    tag: at23
