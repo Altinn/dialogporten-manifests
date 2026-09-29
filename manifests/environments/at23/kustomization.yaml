@@ -18,3 +18,5 @@ images:
     newTag: 1.122.0-1626c5b
   - name: ghcr.io/altinn/dialogporten-janitor
     newTag: 1.122.0-1626c5b
+  - name: ghcr.io/altinn/dialogporten-db-provisioner
+    newTag: 1.121.1-1de2b7c
