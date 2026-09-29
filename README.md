@@ -25,7 +25,7 @@ workload identity and grants it a least-privilege profile role. It follows the s
 pattern as `web-api-migration-job`: a suspended `CronJob` that is run on demand by
 creating a `Job` from its template after completing the prerequisites below.
 
-The run is additive and idempotent — it creates roles and grants that are missing and
+The run is additive and idempotent: it creates roles and grants that are missing and
 leaves everything else alone, so it is safe to re-run after adding a workload.
 
 Which workloads are provisioned is environment data, held in the

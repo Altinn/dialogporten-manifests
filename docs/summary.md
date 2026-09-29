@@ -49,7 +49,7 @@ managed identity name and object id from the resource status at runtime, so iden
 are never checked in.
 
 Notes:
-- The pod carries `azure.workload.identity/use: "true"` and mounts no secret — it
+- The pod carries `azure.workload.identity/use: "true"` and mounts no secret; it
   authenticates as its own identity.
 - That identity (`product-dialogporten-db-provisioner`) must be a Microsoft Entra
   administrator on the PostgreSQL server. The registration lives in the `dialogporten`
