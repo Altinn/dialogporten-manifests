@@ -7,15 +7,16 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `manifests/`: app, job, and common bases plus per-environment overlays in `manifests/environments/<env>/`.
 - `manifests/apps/<app>/base/`: canonical reusable app base manifests consumed by each environment overlay.
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
-- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`.
+- `flux/syncroot/`: bootstrap wiring that selects app artifact tag `<env>` and path `./environments/<env>`.
 - `.github/workflows/publish-flux-artifacts.yml`: publishes OCI artifacts for syncroot and app manifests.
 - `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
 
 ## Registry model
 - Runtime app images: GHCR tags set in `manifests/environments/<env>/kustomization.yaml`.
 - Flux manifests artifacts: ACR (`altinncr.azurecr.io`), published as:
-  - `dialogporten/dialogporten-sync:main` (app manifests)
-  - `dialogporten/syncroot:main` (syncroot)
+  - `dialogporten/dialogporten-sync:<env>` (app manifests)
+  - `dialogporten/syncroot:<env>` (syncroot)
+- Every publish from `main` builds each bundle once and tags it for all environments (`at23`, `tt02`, `yt01`, `prod`), derived from `manifests/environments/`. Publish all app tags before syncroot tags. The app `:main` tag is no longer updated.
 - Flux app `Kustomization` objects apply environment wrappers directly and do not use `postBuild.substituteFrom`.
 
 ## Workflow failure notifications
@@ -34,10 +35,9 @@ When changing structure, environments, Flux source wiring, workflow publish logi
 
 ## Environment additions/removals
 If environment set changes, update all of:
-- `flux/syncroot/<env>/kustomization.yaml` — must patch `spec.path` to `./environments/<env>`.
-  The base pins `spec.path` to `at23`, so an overlay that omits the patch silently
-  deploys at23's manifests. CI enforces this in both `pull-request.yml` and the
-  `publish-syncroot` job of `publish-flux-artifacts.yml`.
+- `flux/syncroot/<env>/kustomization.yaml` — must patch the application Kustomization's `spec.path` to `./environments/<env>` and the OCIRepository's `spec.ref.tag` to `<env>`.
+  Both default to `at23` in the base. CI checks the overlay patches in `pull-request.yml`
+  and the rendered tag/path in the `publish-syncroot` job of `publish-flux-artifacts.yml`.
 - validation loops in `.github/workflows/publish-flux-artifacts.yml`
 - `README.md`, `docs/summary.md`, and this file
 

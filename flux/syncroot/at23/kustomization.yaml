@@ -15,3 +15,15 @@ patches:
         namespace: product-dialogporten
       spec:
         path: ./environments/at23
+  - target:
+      kind: OCIRepository
+      name: dialogporten-manifests
+    patch: |-
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: OCIRepository
+      metadata:
+        name: dialogporten-manifests
+        namespace: product-dialogporten
+      spec:
+        ref:
+          tag: at23

@@ -50,9 +50,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # flux/syncroot/base pins spec.path to one environment, so every overlay
-          # must patch it. An overlay that forgets silently deploys the base
-          # environment's manifests instead of its own.
+          # Both the artifact tag and path default to at23 in the base.
+          # Every overlay must explicitly select its own environment.
           for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
             overlay="./flux/syncroot/${env}/kustomization.yaml"
@@ -64,6 +63,11 @@ jobs:
 
             if ! grep -qE "^[[:space:]]*path:[[:space:]]*\./environments/${env}[[:space:]]*$" "$overlay"; then
               echo "::error::${overlay} does not patch spec.path to ./environments/${env}"
+              exit 1
+            fi
+
+            if ! grep -qE "^[[:space:]]*tag:[[:space:]]*${env}[[:space:]]*$" "$overlay"; then
+              echo "::error::${overlay} does not patch spec.ref.tag to ${env}"
               exit 1
             fi
           done
