@@ -3,5 +3,10 @@ kind: Kustomization
 resources:
   - applicationidentity-secrets.yaml
   - external-secrets.yaml
+  - feature-metrics-collector.yaml
   - linkerd-policies.yaml
   - runtime-config.yaml
+configMapGenerator:
+  - name: feature-metrics-collector-config
+    files:
+      - config.yaml=feature-metrics-collector-config.yaml

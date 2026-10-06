@@ -12,7 +12,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
 
 ## Registry model
-- Runtime app images: GHCR tags set in `manifests/environments/<env>/kustomization.yaml`.
+- Runtime app images: GHCR tags set in `manifests/environments/<env>/kustomization.yaml`. Exception: the feature-metrics collector image is pinned in `manifests/common/base/feature-metrics-collector.yaml`; do not move it to `images:`, which CI overwrites with the app tag.
 - Flux manifests artifacts: ACR (`altinncr.azurecr.io`), published as:
   - `dialogporten/dialogporten-sync:main` (app manifests)
   - `dialogporten/syncroot:main` (syncroot)

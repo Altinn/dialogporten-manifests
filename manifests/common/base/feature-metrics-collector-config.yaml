@@ -1,0 +1,26 @@
+# Collector config for feature-metrics-collector.yaml. Kustomize's configMapGenerator
+# hashes the ConfigMap name, so a change here rolls the collector pods.
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+  batch: {}
+exporters:
+  # Reads APPLICATIONINSIGHTS_CONNECTION_STRING.
+  azuremonitor: {}
+service:
+  extensions: [health_check]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [azuremonitor]

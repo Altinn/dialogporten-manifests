@@ -16,7 +16,7 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
 3. Flux pulls that OCI artifact, and the environment-specific `Kustomization` in `flux/syncroot/<env>` targets the `./environments/<env>` path within the artifact.
 
-Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`.
+Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`. The feature-metrics collector image is the exception: it is pinned in `manifests/common/base/feature-metrics-collector.yaml`.
 
 ## Failure notifications
 
