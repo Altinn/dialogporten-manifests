@@ -83,6 +83,11 @@ spec:
                   fieldPath: metadata.uid
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "k8s.pod.uid=$(POD_UID)"
+            # Feature metrics (cost allocation) go to feature-metrics-collector, not the platform
+            # collector, which drops logs below Warning. See FeatureMetricLoggingExtensions in
+            # Altinn/dialogporten.
+            - name: FEATURE_METRICS_OTLP_ENDPOINT
+              value: http://feature-metrics-collector.product-dialogporten.svc.cluster.local:4317
 ---
 apiVersion: v1
 kind: ConfigMap

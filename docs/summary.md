@@ -8,6 +8,7 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/apps/<app>/base/`: Canonical per-app base manifests used by environment overlays.
 - `manifests/environments/<env>/apps/<app>/`: Per-env app overlays that patch app bases.
 - `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `./environments/<env>` path within the manifests artifact.
+- `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
 ## Flow
 1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`) on every commit to `main`.

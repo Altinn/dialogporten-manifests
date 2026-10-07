@@ -1,0 +1,176 @@
+# Receives Dialogporten's cost-allocation feature metrics from web-api-so and web-api-eu
+# and sends them to Dialogporten's own Application Insights (dp-be-<env>-applicationInsights),
+# which the aggregate-cost-metrics job queries. The platform collector
+# (otel-collector.monitoring) drops logs below Warning, so these records cannot go that way.
+# See docs/FeatureMetrics.md in Altinn/dialogporten.
+#
+# It forwards whatever it receives: the WebApi decides what to send (by log category),
+# and the Linkerd policy below decides who may send.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-metrics-collector
+  labels:
+    app.kubernetes.io/name: feature-metrics-collector
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: feature-metrics-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: feature-metrics-collector
+        app.kubernetes.io/part-of: dialogporten
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        linkerd.io/inject: enabled
+        # As on the platform collector: Azure Monitor ingestion is reached without the proxy.
+        config.linkerd.io/skip-outbound-ports: "443"
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: otel-collector
+          # Pinned here, not in the env kustomization's images: block, which CI overwrites.
+          image: altinncr.azurecr.io/ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.140.1
+          args:
+            - --config=/conf/config.yaml
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: health
+              containerPort: 13133
+          env:
+            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: feature-metrics-collector-secrets
+                  key: dialogportenAppInsightsConnectionString
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+      volumes:
+        - name: config
+          configMap:
+            name: feature-metrics-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feature-metrics-collector
+  labels:
+    app.kubernetes.io/name: feature-metrics-collector
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  selector:
+    app.kubernetes.io/name: feature-metrics-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: feature-metrics-collector-secrets
+  labels:
+    app.kubernetes.io/name: feature-metrics-collector
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: dialogporten-azure-kv
+  target:
+    name: feature-metrics-collector-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: dialogportenAppInsightsConnectionString
+      remoteRef:
+        key: dialogportenAppInsightsConnectionString
+---
+# OTLP from web-api-so and web-api-eu only: everything that arrives here is billed.
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: feature-metrics-collector-otlp
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: feature-metrics-collector
+  port: 4317
+  proxyProtocol: gRPC
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: feature-metrics-senders
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  identities:
+    - "web-api-so.product-dialogporten.serviceaccount.identity.linkerd.cluster.local"
+    - "web-api-eu.product-dialogporten.serviceaccount.identity.linkerd.cluster.local"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: feature-metrics-collector-allow-web-api
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: feature-metrics-collector-otlp
+  requiredAuthenticationRefs:
+    - group: policy.linkerd.io
+      kind: MeshTLSAuthentication
+      name: feature-metrics-senders
+---
+# The kubelet probes :13133 unmeshed from the node, as it does the apps' :8080 probes.
+apiVersion: policy.linkerd.io/v1beta3
+kind: Server
+metadata:
+  name: feature-metrics-collector-health
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: feature-metrics-collector
+  port: 13133
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: feature-metrics-collector-allow-kubelet
+  labels:
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: feature-metrics-collector-health
+  requiredAuthenticationRefs:
+    - group: policy.linkerd.io
+      kind: NetworkAuthentication
+      name: dialogporten-kubelet
