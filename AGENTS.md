@@ -54,16 +54,23 @@ If environment set changes, update all of:
   fail to reconcile these manifests.
 
 ## Routing model
-- The edge proxy strips the public `/dialogporten` mount point; the HTTPRoutes on
-  `dialogporten.<env>.dis-core.altinn.cloud` match the apps' native paths without rewrites.
+- The edge proxy owns the public `/dialogporten` mount point. It forwards web API paths with
+  the prefix (`/dialogporten/api/...`), and the web APIs remove it with
+  `UsePathBase("/dialogporten")`, which leaves unprefixed paths unchanged. GraphQL has no
+  path base, so the edge strips the prefix from `/dialogporten/graphql`. The HTTPRoutes on
+  `dialogporten.<env>.dis-core.altinn.cloud` match the paths as received, without rewrites.
   See `docs/summary.md` for the path table.
 - Match with `PathPrefix`. The exception is `web-api-eu`, whose anchored `RegularExpression`
-  catches every API version. Traefik evaluates regex with Go's unanchored `MatchString`, so
+  catches every API version, with or without the `/dialogporten` prefix. Keep the optional
+  prefix group: `web-api-so` serves the end-user endpoints too, so a prefixed end-user path
+  that misses the regex is answered by `web-api-so` without errors and only shows up as
+  missing `web-api-eu` traffic. Traefik evaluates regex with Go's unanchored `MatchString`, so
   keep the `^...$` anchors: a bare `enduser` pattern also matches the service-owner
   `endusercontext` endpoints. Traefik ranks regex routes by pattern length rather than
   specificity, so check precedence when adding a route that overlaps it.
-- Keep the prefix out of the apps (no `UsePathBase`): the edge owns `/dialogporten`, and the
-  Linkerd routes in `manifests/common/base/linkerd-policies.yaml` match native paths.
+- The Linkerd catch-all route in `manifests/common/base/linkerd-policies.yaml` admits
+  prefixed and unprefixed paths alike; the kubelet probes hit the native `/health/...` paths
+  on the pod directly.
 - Only the probe paths (`/health/startup`, `/health/liveness`, `/health/readiness`) are
   reserved for the kubelet, as `Exact` matches; `/health` and `/health/deep` are open to the
   same callers as the API, including external availability checks through Traefik. Keep probe
