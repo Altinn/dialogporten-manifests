@@ -29,16 +29,24 @@ Change-maintenance rules are defined in `AGENTS.md`.
 
 ## Routing
 Public traffic reaches Dialogporten through the edge proxy for `platform.<env>.altinn.cloud`,
-which owns the `/dialogporten` mount point: it strips the prefix and forwards to
+which owns the `/dialogporten` mount point and forwards to
 `dialogporten.<env>.dis-core.altinn.cloud`. Dialogporten is not published through APIM on
-dis-core. On its own host, Traefik routes the apps' native paths without rewrites, like every
-other product on dis-core; the apps never strip `/dialogporten` themselves.
+dis-core. The edge forwards web API paths with the prefix (`/dialogporten/api/...`,
+`/dialogporten/health/...`), and the web APIs remove it themselves with
+`UsePathBase("/dialogporten")`, which leaves unprefixed paths unchanged. GraphQL has no path
+base, so the edge strips the prefix from `/dialogporten/graphql` and
+`/dialogporten/graphql/stream`. On its own host, Traefik routes the paths as received, without
+rewrites.
 
 | Path | App |
 | --- | --- |
-| `/api/v{n}/enduser`, any API version | `web-api-eu` |
+| `/api/v{n}/enduser` or `/dialogporten/api/v{n}/enduser`, any API version | `web-api-eu` |
 | `/graphql` (including `/graphql/stream`) | `graphql` |
 | `/` (everything else) | `web-api-so` |
+
+`web-api-eu` must match both forms. `web-api-so` runs the same image and serves the end-user
+endpoints too, so end-user traffic that misses the `web-api-eu` route is answered without
+errors and only shows up as missing `web-api-eu` traffic.
 
 `service` serves nothing but health checks, so it has no route.
 
