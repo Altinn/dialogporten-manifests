@@ -7,7 +7,7 @@ This repository contains the Flux wiring and workload manifests for Dialogporten
 - `manifests/apps/<app>/base/`: canonical per-app base manifests (`web-api-eu`, `web-api-so`, `graphql`, `service`), aligned with job base layout (`manifests/jobs/<job>/base/`).
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays that only patch app bases.
 - `manifests/environments/<env>/kustomization.yaml`: concise env entrypoint that pulls all app/job overlays for that env and sets image tags.
-- `flux/syncroot/`: bootstrap wiring (namespace, `OCIRepository`, and a Kustomization that targets the chosen `flux-system/<env>` path).
+- `flux/syncroot/`: bootstrap wiring (namespace, `OCIRepository`, and a Kustomization that targets the chosen `flux-system/<env>` path). The `at23` overlay also has the `Receiver` for on-demand reconcile.
 - `flux/edge-syncroot/`: edge proxy routing for the public `/dialogporten` mount point (Envoy Gateway `Backend`, `BackendTLSPolicy`, and `HTTPRoute`). The base uses placeholder hostnames; each `<env>` overlay sets the public hostname and the `dialogporten.<env>.dis-core.*` backend hostname. `tt02` and `prod` still route through the old APIM via the `components/platform-apim` component, which points the `HTTPRoute` at the platform-owned `platform/platform-upstream` `Backend` instead of `dp-dis-upstream`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
@@ -16,6 +16,7 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot`, edge-syncroot from `flux/edge-syncroot` (`dialogporten/edge-syncroot:<env>`), and app manifests from `manifests/`.
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
 3. Flux pulls that OCI artifact, and the environment-specific `Kustomization` in `flux/syncroot/<env>` targets the `./environments/<env>` path within the artifact.
+4. After an image-tag update, CI asks the environment's cluster to pull the new artifact right away instead of at the next 10-minute poll. See [On-demand reconcile](docs/summary.md#on-demand-reconcile).
 
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`. The feature-metrics collector image is the exception: it is pinned in `manifests/common/base/feature-metrics-collector.yaml`.
 

@@ -7,7 +7,7 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/environments/<env>/`: Env entrypoint that pulls all overlays and sets image tags.
 - `manifests/apps/<app>/base/`: Canonical per-app base manifests used by environment overlays.
 - `manifests/environments/<env>/apps/<app>/`: Per-env app overlays that patch app bases.
-- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `./environments/<env>` path within the manifests artifact.
+- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `./environments/<env>` path within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile.
 - `flux/edge-syncroot/`: Edge proxy routing (Envoy Gateway `Backend`, `BackendTLSPolicy`, `HTTPRoute`). The base uses `*.placeholder.invalid` hostnames; each `<env>` overlay patches the public hostname and the backend hostname. `tt02` and `prod` include `components/platform-apim`, which sends traffic to the old APIM through the platform-owned `platform/platform-upstream` `Backend` (and its `BackendTLSPolicy`); APIM strips the `/dialogporten` prefix, so those routes do not rewrite GraphQL paths. `dp-dis-upstream` is still rendered there, unused, so cutover is removing the component. Published as `dialogporten/edge-syncroot:<env>`.
 - `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
@@ -18,6 +18,22 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 4. Application container images remain on GHCR and are pinned in `manifests/environments/<env>/kustomization.yaml`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
+
+## On-demand reconcile
+The `OCIRepository` polls every 10 minutes, so a published artifact can wait up to 10 minutes before the cluster notices it. An image-tag update asks the cluster to fetch it right away ([RFC 0017](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0017-on-demand-flux-reconcile.md)):
+
+1. `workflow-update-all-image-tags.yml` dispatches `publish-flux-artifacts.yml` with the `environment` whose tags changed.
+2. After the app artifact is pushed, the `Trigger Flux reconcile` step calls the shared `Altinn/altinn-platform/actions/flux/trigger-reconcile` action for that environment.
+3. The action posts to the webhook endpoint of the environment, `https://ops.<env>.dis.altinn.cloud/flux-webhook`, with the job's GitHub Actions OIDC token. The DIS edge gateway checks the token and the rate limits, then forwards the request to the Flux notification-controller in the DIS core cluster.
+4. The `Receiver` `dialogporten-manifests` in `flux/syncroot/at23/dialogporten-receiver.yaml` verifies the token again and asks Flux to reconcile the `OCIRepository`. The `Kustomization` follows by itself when the source reports a new revision.
+
+The `Receiver` has type `generic-oidc` and shares no secret. It accepts a token only when it is issued to this repository (matched on the immutable numeric repository and organization ids), for `refs/heads/main`, with the webhook endpoint of its environment as audience. A token for one environment is not accepted in another.
+
+The trigger is best effort (`continue-on-error: true`): the request only tells Flux to check its source, and the next poll still picks the artifact up if it fails. A failed trigger shows as a failed step and does not send a Slack alert.
+
+Only `at23` is triggered today. It is the only environment on DIS core, and only its syncroot overlay has the `Receiver`, because a cluster without Flux 2.9 rejects the `generic-oidc` type. Runs without an `environment` (pushes to `main`, manual dispatch without the input) skip the trigger and rely on polling.
+
+The trigger does not tell CI whether the rollout succeeded. [RFC 0019](https://github.com/Altinn/altinn-platform/pull/4214) proposes that.
 
 ## Workflow failure alerts
 
