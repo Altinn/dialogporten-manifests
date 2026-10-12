@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - dialogporten-oci-repository.yaml
   - dialogporten-flux-kustomization.yaml
+  - dialogporten-receiver.yaml

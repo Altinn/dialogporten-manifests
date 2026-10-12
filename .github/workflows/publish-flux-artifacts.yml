@@ -2,6 +2,11 @@ name: Publish Flux artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment whose image tags changed (at23, tt02, yt01 or prod). Its cluster is asked to reconcile right after publishing.
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -217,6 +222,20 @@ jobs:
           azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
           azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}
+
+      # Flux polls the app artifact every 10 minutes. When the run names the
+      # environment whose image tags changed, ask that cluster to fetch the new
+      # artifact now. Best effort: the next poll still picks it up if this
+      # fails. List only environments that run on DIS core and expose the
+      # Flux webhook receiver.
+      - name: Trigger Flux reconcile
+        if: contains(fromJSON('["at23"]'), inputs.environment)
+        continue-on-error: true
+        uses: Altinn/altinn-platform/actions/flux/trigger-reconcile@c535092e349d0c24dfa79ddde99beded6747ac4f # feat/flux-trigger-reconcile-action
+        with:
+          url: https://flux-webhook.${{ inputs.environment }}.dis-core.altinn.cloud
+          receiver_name: dialogporten-manifests
+          receiver_namespace: product-dialogporten
 
   notify-failure:
     name: Send Slack message on failure
