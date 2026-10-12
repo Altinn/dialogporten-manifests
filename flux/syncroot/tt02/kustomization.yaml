@@ -14,3 +14,10 @@ patches:
         namespace: product-dialogporten
       spec:
         path: ./environments/tt02
+  - target:
+      kind: Receiver
+      name: dialogporten-manifests
+    patch: |-
+      - op: replace
+        path: /spec/oidcProviders/0/audience
+        value: https://flux-webhook.tt02.dis-core.altinn.cloud

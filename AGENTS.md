@@ -7,7 +7,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `manifests/`: app, job, and common bases plus per-environment overlays in `manifests/environments/<env>/`.
 - `manifests/apps/<app>/base/`: canonical reusable app base manifests consumed by each environment overlay.
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
-- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`.
+- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`, plus the `Receiver` for on-demand reconcile.
 - `.github/workflows/publish-flux-artifacts.yml`: publishes OCI artifacts for syncroot and app manifests.
 - `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
 
@@ -25,6 +25,14 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - Keep notifications gated by `failure() && !cancelled()` so successful, skipped, and cancelled runs stay silent.
 - Reuse `workflow-send-ci-cd-status-slack-message.yml` with `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID_FOR_CI_CD_STATUS`. Keep dynamic payload values JSON-encoded and Slack delivery errors visible as job failures.
 
+## On-demand reconcile
+
+- `publish-flux-artifacts.yml` asks the cluster to fetch a new app artifact right after publishing, through the `Receiver` in `flux/syncroot/base/dialogporten-receiver.yaml`. See `docs/summary.md` for the flow.
+- Keep the `Trigger Flux reconcile` step after the step that pushes and tags the app artifact, and keep `continue-on-error: true`. Polling is the fallback; a failed trigger must not fail publishing or raise a Slack alert.
+- The step runs only for the environment passed as the `environment` dispatch input, and only for environments in its `if:` list. `workflow-update-all-image-tags.yml` must keep passing `-f environment=...`.
+- The `Receiver` lists only the `OCIRepository`. Do not add the `Kustomization`: it reconciles when the source revision changes, and triggering it directly can run it before the new artifact is fetched.
+- The `Receiver` validations pin this repository by numeric id and the `main` ref. Do not relax them to names or to the organization alone: GitHub issues OIDC tokens to every repository.
+
 ## Change hygiene (required)
 When changing structure, environments, Flux source wiring, workflow publish logic, or registry/source strategy, update all relevant guidance in the same PR:
 - `README.md`
@@ -38,6 +46,11 @@ If environment set changes, update all of:
   The base pins `spec.path` to `at23`, so an overlay that omits the patch silently
   deploys at23's manifests. CI enforces this in both `pull-request.yml` and the
   `publish-syncroot` job of `publish-flux-artifacts.yml`.
+  It must also patch the `Receiver` audience to `https://flux-webhook.<env>.dis-core.altinn.cloud`.
+  The base carries at23's audience; an overlay that omits the patch rejects its own
+  environment's reconcile requests.
+- the `if:` list of the `Trigger Flux reconcile` step in `publish-flux-artifacts.yml`, once the
+  environment runs on DIS core and exposes the Flux webhook receiver
 - validation loops in `.github/workflows/publish-flux-artifacts.yml`
 - `README.md`, `docs/summary.md`, and this file
 

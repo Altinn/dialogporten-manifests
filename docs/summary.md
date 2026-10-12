@@ -7,7 +7,7 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/environments/<env>/`: Env entrypoint that pulls all overlays and sets image tags.
 - `manifests/apps/<app>/base/`: Canonical per-app base manifests used by environment overlays.
 - `manifests/environments/<env>/apps/<app>/`: Per-env app overlays that patch app bases.
-- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `./environments/<env>` path within the manifests artifact.
+- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `./environments/<env>` path within the manifests artifact, plus the `Receiver` for on-demand reconcile.
 - `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
 ## Flow
@@ -17,6 +17,22 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 4. Application container images remain on GHCR and are pinned in `manifests/environments/<env>/kustomization.yaml`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
+
+## On-demand reconcile
+The `OCIRepository` polls every 10 minutes, so a published artifact used to wait up to 10 minutes before the cluster noticed it. An image-tag update now asks the cluster to fetch it right away:
+
+1. `workflow-update-all-image-tags.yml` dispatches `publish-flux-artifacts.yml` with the `environment` whose tags changed.
+2. After the app artifact is pushed and tagged, the `Trigger Flux reconcile` step calls the shared `Altinn/altinn-platform/actions/flux/trigger-reconcile` action for that environment.
+3. The action posts to `https://flux-webhook.<env>.dis-core.altinn.cloud/hook/<digest>` with the job's GitHub Actions OIDC token. The platform routes that host to the Flux notification-controller.
+4. The `Receiver` `dialogporten-manifests` in `flux/syncroot/base/dialogporten-receiver.yaml` verifies the token and asks Flux to reconcile the `OCIRepository`. The `Kustomization` follows by itself when the source reports a new revision.
+
+The `Receiver` has type `generic-oidc` (Flux 2.9 or later) and shares no secret. It accepts a token only when it is issued to this repository (matched on the immutable numeric repository and organization ids), for `refs/heads/main`, with the environment's webhook URL as audience. Each `flux/syncroot/<env>` overlay patches that audience, so a token for one environment is not accepted in another.
+
+The trigger is best effort (`continue-on-error: true`): the request only tells Flux to check its source, and the next poll still picks the artifact up if it fails. A failed trigger shows as a failed step and does not send a Slack alert.
+
+Only `at23` is triggered today; it is the only environment that runs on DIS core and exposes the receiver. Runs without an `environment` (pushes to `main`, manual dispatch without the input) skip the trigger and rely on polling.
+
+The trigger does not tell CI whether the rollout succeeded. That is the next step, tracked in the [DIS deployment status RFC](https://github.com/Altinn/altinn-platform/pull/4144).
 
 ## Workflow failure alerts
 
