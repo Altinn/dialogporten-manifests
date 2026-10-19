@@ -15,6 +15,7 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot` and app manifests from `manifests/`.
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
 3. Flux pulls that OCI artifact, and the environment-specific `Kustomization` in `flux/syncroot/<env>` targets the `./environments/<env>` path within the artifact.
+4. After an image-tag update, CI asks the environment's cluster to pull the new artifact right away instead of at the next 10-minute poll. See [On-demand reconcile](docs/summary.md#on-demand-reconcile).
 
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`. The feature-metrics collector image is the exception: it is pinned in `manifests/common/base/feature-metrics-collector.yaml`.
 

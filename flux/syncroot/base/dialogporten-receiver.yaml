@@ -1,0 +1,29 @@
+# Lets the Publish Flux artifacts workflow ask Flux to fetch a new artifact now
+# instead of at the next poll. The caller authenticates with its GitHub Actions
+# OIDC token; no secret is shared.
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Receiver
+metadata:
+  name: dialogporten-manifests
+  namespace: product-dialogporten
+spec:
+  type: generic-oidc
+  oidcProviders:
+    - issuerURL: https://token.actions.githubusercontent.com
+      # The cluster's webhook URL, so a token for one environment is not
+      # accepted in another. Every overlay patches this.
+      audience: https://flux-webhook.at23.dis-core.altinn.cloud
+      validations:
+        # Altinn/dialogporten-manifests. GitHub issues tokens to every
+        # repository, so the caller must be pinned. The numeric ids cannot be
+        # reused after a rename or transfer; the names can.
+        - expression: claims.repository_owner_id == '5949420' && claims.repository_id == '1140625551'
+          message: token is not issued to Altinn/dialogporten-manifests
+        # Same boundary as the identity that may push the artifact.
+        - expression: claims.ref == 'refs/heads/main'
+          message: token is not issued for the main branch
+  resources:
+    # The Kustomization reconciles by itself when this source gets a new revision.
+    - apiVersion: source.toolkit.fluxcd.io/v1
+      kind: OCIRepository
+      name: dialogporten-manifests
