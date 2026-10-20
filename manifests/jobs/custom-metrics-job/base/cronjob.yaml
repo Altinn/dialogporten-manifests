@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: custom-metrics-job
+  labels:
+    app.kubernetes.io/name: custom-metrics-job
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  schedule: "* * * * *"
+  suspend: true
+  # Runs every minute, so a late run has no value. Skip missed runs instead of
+  # backfilling them, e.g. when the CronJob is unsuspended.
+  startingDeadlineSeconds: 60
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: custom-metrics-job
+            app.kubernetes.io/part-of: dialogporten
+        spec:
+          restartPolicy: Never
+          serviceAccountName: custom-metrics-job
+          containers:
+            - name: custom-metrics-job
+              image: ghcr.io/altinn/dialogporten-janitor:set-by-ci
+              args:
+                - collect-custom-metrics
+              env:
+                - name: Infrastructure__DialogDbConnectionString
+                  valueFrom:
+                    secretKeyRef:
+                      name: dialogporten-secrets
+                      key: dialogportenAdoConnectionString
+                - name: Infrastructure__Redis__ConnectionString
+                  valueFrom:
+                    secretKeyRef:
+                      name: dialogporten-secrets
+                      key: dialogportenRedisConnectionString
+                - name: DOTNET_ENVIRONMENT
+                  value: set-by-env
+                - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+                  value: ${DIALOGPORTEN_APPINSIGHTS_CONNECTION_STRING}
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: http://otel-collector.monitoring.svc.cluster.local:4317
+                - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: grpc
+                - name: OTEL_SERVICE_NAME
+                  value: dialogporten-custom-metrics-job
+                - name: POD_UID
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.uid
+                - name: OTEL_RESOURCE_ATTRIBUTES
+                  value: "k8s.pod.uid=$(POD_UID)"
