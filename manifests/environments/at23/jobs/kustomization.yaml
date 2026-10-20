@@ -4,5 +4,5 @@ resources:
   - web-api-migration-job
   - sync-resource-policy-information-job
   - sync-subject-resource-mappings-job
-  - reindex-dialogsearch-job
+  - reindex-search-job
   - aggregate-cost-metrics-job
