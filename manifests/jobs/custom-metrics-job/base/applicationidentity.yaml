@@ -1,0 +1,8 @@
+apiVersion: application.dis.altinn.cloud/v1alpha1
+kind: ApplicationIdentity
+metadata:
+  name: custom-metrics-job
+  labels:
+    app.kubernetes.io/name: custom-metrics-job
+    app.kubernetes.io/part-of: dialogporten
+spec: {}

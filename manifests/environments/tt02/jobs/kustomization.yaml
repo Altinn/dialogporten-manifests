@@ -6,3 +6,4 @@ resources:
   - sync-subject-resource-mappings-job
   - reindex-search-job
   - aggregate-cost-metrics-job
+  - custom-metrics-job
