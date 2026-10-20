@@ -4,3 +4,4 @@ resources:
   - ../../../../jobs/custom-metrics-job/base
 patches:
   - path: env.yaml
+  - path: suspend.yaml
