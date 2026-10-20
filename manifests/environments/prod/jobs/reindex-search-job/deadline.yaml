@@ -1,8 +1,8 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: reindex-dialogsearch-job
+  name: reindex-search-job
 spec:
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 86400
+      activeDeadlineSeconds: 172800

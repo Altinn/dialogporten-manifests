@@ -1,9 +1,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: reindex-dialogsearch-job
+  name: reindex-search-job
   labels:
-    app.kubernetes.io/name: reindex-dialogsearch-job
+    app.kubernetes.io/name: reindex-search-job
     app.kubernetes.io/part-of: dialogporten
 spec:
   schedule: "0 0 1 1 *"
@@ -17,13 +17,13 @@ spec:
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: reindex-dialogsearch-job
+            app.kubernetes.io/name: reindex-search-job
             app.kubernetes.io/part-of: dialogporten
         spec:
           restartPolicy: Never
-          serviceAccountName: reindex-dialogsearch-job
+          serviceAccountName: reindex-search-job
           containers:
-            - name: reindex-dialogsearch-job
+            - name: reindex-search-job
               image: ghcr.io/altinn/dialogporten-janitor:set-by-ci
               args:
                 - reindex-dialogsearch
@@ -54,7 +54,7 @@ spec:
                 - name: OTEL_EXPORTER_OTLP_PROTOCOL
                   value: grpc
                 - name: OTEL_SERVICE_NAME
-                  value: dialogporten-reindex-dialogsearch-job
+                  value: dialogporten-reindex-search-job
                 - name: POD_UID
                   valueFrom:
                     fieldRef:
