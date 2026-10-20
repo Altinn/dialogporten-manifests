@@ -1,0 +1,6 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: custom-metrics-job
+spec:
+  suspend: false
