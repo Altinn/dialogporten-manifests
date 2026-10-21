@@ -8,7 +8,7 @@ This repository contains the Flux wiring and workload manifests for Dialogporten
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays that only patch app bases.
 - `manifests/environments/<env>/kustomization.yaml`: concise env entrypoint that pulls all app/job overlays for that env and sets image tags.
 - `flux/syncroot/`: bootstrap wiring (namespace, `OCIRepository`, and a Kustomization that targets the chosen `flux-system/<env>` path).
-- `flux/edge-syncroot/`: edge proxy routing for the public `/dialogporten` mount point (Envoy Gateway `Backend`, `BackendTLSPolicy`, and `HTTPRoute`). The base uses placeholder hostnames; each `<env>` overlay sets the public hostname and the `dialogporten.<env>.dis-core.altinn.cloud` backend hostname.
+- `flux/edge-syncroot/`: edge proxy routing for the public `/dialogporten` mount point (Envoy Gateway `Backend`, `BackendTLSPolicy`, and `HTTPRoute`). The base uses placeholder hostnames; each `<env>` overlay sets the public hostname and the `dialogporten.<env>.dis-core.*` backend hostname. `tt02` and `prod` still route through the old APIM via the `components/platform-apim` component, which points the `HTTPRoute` at the platform-owned `platform/platform-upstream` `Backend` instead of `dp-dis-upstream`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
