@@ -1,0 +1,30 @@
+# Routes the edge HTTPRoute through the old APIM instead of straight to dis-core.
+# The Backend and BackendTLSPolicy for APIM are owned by the platform team
+# (platform/platform-upstream and platform/platform-upstream-tls), so we only
+# reference them. APIM strips the /dialogporten prefix itself, so the GraphQL
+# rules keep the path as received. Remove this component from an overlay to cut
+# that environment over to dp-dis-upstream.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: HTTPRoute
+      name: dialogporten
+    patch: |-
+      - op: remove
+        path: /spec/rules/1/filters/0/urlRewrite/path
+      - op: remove
+        path: /spec/rules/2/filters/0/urlRewrite/path
+      - op: replace
+        path: /spec/rules/0/backendRefs/0
+        value: &platform-upstream
+          group: gateway.envoyproxy.io
+          kind: Backend
+          name: platform-upstream
+          namespace: platform
+      - op: replace
+        path: /spec/rules/1/backendRefs/0
+        value: *platform-upstream
+      - op: replace
+        path: /spec/rules/2/backendRefs/0
+        value: *platform-upstream
