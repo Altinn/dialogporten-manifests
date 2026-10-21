@@ -1,0 +1,11 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: dp-dis-upstream
+  namespace: product-dialogporten
+spec:
+  endpoints:
+    - fqdn:
+        # Placeholder: set per environment in the overlay.
+        hostname: dialogporten.placeholder.invalid
+        port: 443

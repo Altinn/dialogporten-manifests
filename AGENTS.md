@@ -8,6 +8,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `manifests/apps/<app>/base/`: canonical reusable app base manifests consumed by each environment overlay.
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
 - `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`.
+- `flux/edge-syncroot/`: edge proxy routes (`Backend`, `BackendTLSPolicy`, `HTTPRoute`) per environment. The base uses `*.placeholder.invalid` hostnames and every `<env>` overlay must patch all of them; the `publish-edge-syncroot` job fails if any placeholder survives.
 - `.github/workflows/publish-flux-artifacts.yml`: publishes OCI artifacts for syncroot and app manifests.
 - `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
 
@@ -16,12 +17,13 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - Flux manifests artifacts: ACR (`altinncr.azurecr.io`), published as:
   - `dialogporten/dialogporten-sync:main` (app manifests)
   - `dialogporten/syncroot:main` (syncroot)
+  - `dialogporten/edge-syncroot:<env>` (edge-syncroot; envs listed in the `publish-edge-syncroot` matrix)
 - Flux app `Kustomization` objects apply environment wrappers directly and do not use `postBuild.substituteFrom`.
 
 ## Workflow failure notifications
 
 - Image-tag update alerts must cover the entire `update-tags` job, including validation, push, and publish dispatch.
-- Artifact publishing alerts must depend on both `publish-syncroot` and `publish-app-manifests` and report both results in one message.
+- Artifact publishing alerts must depend on `publish-syncroot`, `publish-edge-syncroot`, and `publish-app-manifests` and report all results in one message.
 - Keep notifications gated by `failure() && !cancelled()` so successful, skipped, and cancelled runs stay silent.
 - Reuse `workflow-send-ci-cd-status-slack-message.yml` with `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID_FOR_CI_CD_STATUS`. Keep dynamic payload values JSON-encoded and Slack delivery errors visible as job failures.
 

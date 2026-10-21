@@ -71,7 +71,7 @@ jobs:
   kustomize-diff:
     uses: dis-way/actions/.github/workflows/kustomize-diff.yml@45eae05af29ddb403645fc226d22ce63d3ca1ed4 # main
     with:
-      build-paths: "manifests/environments/*,flux/syncroot/*"
+      build-paths: "manifests/environments/*,flux/syncroot/*,flux/edge-syncroot/*"
     permissions:
       contents: read
       pull-requests: write
