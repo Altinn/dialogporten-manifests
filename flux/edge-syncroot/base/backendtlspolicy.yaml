@@ -1,0 +1,14 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: dp-dis-upstream-tls
+  namespace: product-dialogporten
+spec:
+  targetRefs:
+    - group: gateway.envoyproxy.io
+      kind: Backend
+      name: dp-dis-upstream
+  validation:
+    wellKnownCACertificates: System
+    # Placeholder: set per environment in the overlay.
+    hostname: dialogporten.placeholder.invalid

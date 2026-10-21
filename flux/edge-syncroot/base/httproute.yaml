@@ -1,0 +1,63 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: dialogporten
+  namespace: product-dialogporten
+spec:
+  # Placeholders: the public hostname and the rewrite hostnames are set per environment in the overlay.
+  hostnames:
+    - "platform.placeholder.invalid"
+  parentRefs:
+    - name: eg
+      namespace: envoy-gateway-system
+      sectionName: https
+  rules:
+    - name: default
+      matches:
+        - path:
+            type: PathPrefix
+            value: /dialogporten
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            hostname: dialogporten.placeholder.invalid
+      backendRefs:
+        - group: gateway.envoyproxy.io
+          kind: Backend
+          name: dp-dis-upstream
+    - name: graphql
+      matches:
+        - path:
+            type: PathPrefix
+            value: /dialogporten/graphql
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            hostname: dialogporten.placeholder.invalid
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /graphql
+      timeouts:
+        request: 0s        # 0s = disabled; SSE runs indefinitely
+      backendRefs:
+        - group: gateway.envoyproxy.io
+          kind: Backend
+          name: dp-dis-upstream
+    - name: graphql-stream
+      matches:
+        - path:
+            type: PathPrefix
+            value: /dialogporten/graphql/stream
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            hostname: dialogporten.placeholder.invalid
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /graphql/stream
+      timeouts:
+        request: 0s        # 0s = disabled; SSE runs indefinitely
+      backendRefs:
+        - group: gateway.envoyproxy.io
+          kind: Backend
+          name: dp-dis-upstream

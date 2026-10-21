@@ -8,6 +8,7 @@ on:
 
 env:
   SYNCROOT_ARTIFACT_NAME: dialogporten/syncroot
+  EDGE_SYNCROOT_ARTIFACT_NAME: dialogporten/edge-syncroot
   APP_ARTIFACT_NAME: dialogporten/dialogporten-sync
 
 permissions:
@@ -111,6 +112,82 @@ jobs:
           image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
           tag: ${{ matrix.tag }}
           workdir: ./flux/syncroot
+          azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
+          azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}
+
+  publish-edge-syncroot:
+    name: Publish edge-syncroot artifact
+    if: github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        tag: [at23]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install kustomize
+        env:
+          # Official kustomize binary (no Docker, no sudo) so this job can run on
+          # self-hosted runners, which ship neither kustomize nor kubectl.
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=semver extractVersion=^kustomize\/(?<version>v.+)$
+          KUSTOMIZE_VERSION: v5.8.1
+        run: |
+          set -euo pipefail
+
+          case "$(uname -m)" in
+            x86_64) arch=amd64 ;;
+            aarch64 | arm64) arch=arm64 ;;
+            *) echo "::error::Unsupported architecture: $(uname -m)"; exit 1 ;;
+          esac
+
+          dest="${RUNNER_TEMP:-/tmp}/kustomize-bin"
+          mkdir -p "$dest"
+          tarball="kustomize_${KUSTOMIZE_VERSION}_linux_${arch}.tar.gz"
+          url="https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/${tarball}"
+
+          if command -v curl >/dev/null 2>&1; then
+            curl -fsSL "$url" -o "$dest/$tarball"
+          elif command -v wget >/dev/null 2>&1; then
+            wget -qO "$dest/$tarball" "$url"
+          else
+            echo "::error::Neither curl nor wget is available on the runner."
+            exit 1
+          fi
+
+          tar -xzf "$dest/$tarball" -C "$dest" kustomize
+          rm -f "$dest/$tarball"
+          chmod +x "$dest/kustomize"
+          echo "$dest" >> "$GITHUB_PATH"
+          "$dest/kustomize" version
+
+      - name: Validate edge-syncroot structure
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          overlay="./flux/edge-syncroot/${{ matrix.tag }}/kustomization.yaml"
+          if [ ! -f "$overlay" ]; then
+            echo "::error::Missing ${overlay}"
+            exit 1
+          fi
+
+          # flux/edge-syncroot/base uses placeholder hostnames, so every overlay
+          # must replace them. Assert on the rendered output: a patch aimed at the
+          # wrong resource name parses fine but never applies.
+          rendered=$(kustomize build "./flux/edge-syncroot/${{ matrix.tag }}")
+          if grep -q 'placeholder\.invalid' <<<"$rendered"; then
+            echo "::error::./flux/edge-syncroot/${{ matrix.tag }}/ leaves base placeholder hostnames unpatched"
+            exit 1
+          fi
+
+      - name: Build and push edge-syncroot artifact
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@523f141da4f116fdd7331585396d83a5d7ade7ea # main
+        with:
+          image_name: ${{ env.EDGE_SYNCROOT_ARTIFACT_NAME }}
+          tag: ${{ matrix.tag }}
+          workdir: ./flux/edge-syncroot
           azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
           azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
           azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}
@@ -220,7 +297,7 @@ jobs:
 
   notify-failure:
     name: Send Slack message on failure
-    needs: [publish-syncroot, publish-app-manifests]
+    needs: [publish-syncroot, publish-edge-syncroot, publish-app-manifests]
     if: ${{ failure() && !cancelled() }}
     uses: ./.github/workflows/workflow-send-ci-cd-status-slack-message.yml
     with:
@@ -229,6 +306,7 @@ jobs:
         Ref: ${{ github.ref_name }}
         Commit: ${{ github.sha }}
         Publish syncroot artifact: ${{ needs.publish-syncroot.result }}
+        Publish edge-syncroot artifact: ${{ needs.publish-edge-syncroot.result }}
         Publish app manifests artifact: ${{ needs.publish-app-manifests.result }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
