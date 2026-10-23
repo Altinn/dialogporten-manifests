@@ -20,6 +20,23 @@ spec:
         linkerd.io/inject: enabled
     spec:
       serviceAccountName: graphql
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql
+          matchLabelKeys:
+            - pod-template-hash
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: graphql
+          matchLabelKeys:
+            - pod-template-hash
       containers:
         - name: graphql
           image: ghcr.io/altinn/dialogporten-graphql:set-by-ci
@@ -183,6 +200,20 @@ spec:
       metricType: Utilization
       metadata:
         value: "70"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: graphql
+  labels:
+    app.kubernetes.io/name: graphql
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  maxUnavailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: graphql
 ---
 apiVersion: application.dis.altinn.cloud/v1alpha1
 kind: ApplicationIdentity

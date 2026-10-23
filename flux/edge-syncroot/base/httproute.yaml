@@ -23,6 +23,8 @@ spec:
         - type: URLRewrite
           urlRewrite:
             hostname: dialogporten.placeholder.invalid
+      timeouts:
+        request: 240s      # Envoy's default of 15s cuts long REST calls
       backendRefs:
         - group: gateway.envoyproxy.io
           kind: Backend

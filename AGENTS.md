@@ -54,6 +54,12 @@ If environment set changes, update all of:
   of the request; without it the autoscaler reports `<unknown>` and never scales.
 - The `ScaledObject` CRD is a hard dependency — a cluster without the KEDA add-on will
   fail to reconcile these manifests.
+- Every app base has a `PodDisruptionBudget` (`maxUnavailable: 1`,
+  `unhealthyPodEvictionPolicy: AlwaysAllow`) and zone and hostname
+  `topologySpreadConstraints` with `whenUnsatisfiable: ScheduleAnyway`; give a new app the
+  same. Keep `maxUnavailable`: `minAvailable: 1` blocks node drains where an environment runs
+  one replica. Keep `ScheduleAnyway` while the workpool is one node pool across zones, since
+  the cluster autoscaler cannot add a node in a chosen zone.
 
 ## Routing model
 - The edge proxy owns the public `/dialogporten` mount point. It forwards web API paths with
@@ -70,6 +76,8 @@ If environment set changes, update all of:
   keep the `^...$` anchors: a bare `enduser` pattern also matches the service-owner
   `endusercontext` endpoints. Traefik ranks regex routes by pattern length rather than
   specificity, so check precedence when adding a route that overlaps it.
+- Every edge rule sets `timeouts.request` explicitly, because Envoy's route default is 15 s:
+  `240s` on the API rule (the Container Apps ingress cap) and `0s` on the GraphQL rules for SSE.
 - The Linkerd catch-all route in `manifests/common/base/linkerd-policies.yaml` admits
   prefixed and unprefixed paths alike; the kubelet probes hit the native `/health/...` paths
   on the pod directly.

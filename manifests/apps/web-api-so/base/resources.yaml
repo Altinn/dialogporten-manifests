@@ -20,6 +20,23 @@ spec:
         linkerd.io/inject: enabled
     spec:
       serviceAccountName: web-api-so
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: web-api-so
+          matchLabelKeys:
+            - pod-template-hash
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: web-api-so
+          matchLabelKeys:
+            - pod-template-hash
       containers:
         - name: web-api-so
           image: ghcr.io/altinn/dialogporten-webapi:set-by-ci
@@ -190,6 +207,20 @@ spec:
       metricType: Utilization
       metadata:
         value: "70"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-api-so
+  labels:
+    app.kubernetes.io/name: web-api-so
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  maxUnavailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web-api-so
 ---
 apiVersion: application.dis.altinn.cloud/v1alpha1
 kind: ApplicationIdentity
