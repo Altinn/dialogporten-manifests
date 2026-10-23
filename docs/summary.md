@@ -51,6 +51,10 @@ errors and only shows up as missing `web-api-eu` traffic.
 
 `service` serves nothing but health checks, so it has no route.
 
+The edge's API rule (`default`) sets `request: 240s`, the cap Container Apps ingress puts on the
+same calls, because Envoy's route default is 15 s. The GraphQL rules disable the request timeout
+(`0s`) so SSE streams on `/graphql/stream` stay open.
+
 Linkerd reserves only the kubelet's probe paths (`/health/startup`, `/health/liveness`,
 `/health/readiness`) for the node network (`manifests/common/base/linkerd-policies.yaml`).
 Everything else, including `/health` and `/health/deep`, is open to the same callers as the
@@ -79,6 +83,17 @@ Container `resources` live in the app base at 1 CPU / 2Gi (requests == limits, a
 Container Apps does); `yt01` and `prod` override to 2 CPU / 4Gi. The requests are
 required, not cosmetic: KEDA's cpu/memory triggers read utilisation as a share of
 the request, and report `<unknown>` without one.
+
+Each app base also has a `PodDisruptionBudget` with `maxUnavailable: 1` and
+`unhealthyPodEvictionPolicy: AlwaysAllow`, so a node drain (AKS upgrade, autoscaler scale-down)
+takes one pod of an app at a time, and a running pod that is not ready never blocks it.
+`minAvailable: 1` would block every drain in environments that run one replica.
+
+The Deployments spread their pods across zones and nodes with `topologySpreadConstraints`
+(`maxSkew: 1`, `whenUnsatisfiable: ScheduleAnyway`, `matchLabelKeys: [pod-template-hash]`). The
+spread is soft because the workpool is one node pool across zones: the cluster autoscaler cannot
+add a node in a chosen zone, so `DoNotSchedule` could leave pods pending. Explicit constraints
+replace the scheduler's cluster defaults, which is why the hostname constraint is there too.
 
 Notes:
 - KEDA (AKS managed add-on) must be present in the target cluster; the `ScaledObject`
