@@ -309,7 +309,7 @@ jobs:
       - name: Trigger Flux reconcile
         if: contains(fromJSON('["at23"]'), inputs.environment)
         continue-on-error: true
-        uses: Altinn/altinn-platform/actions/flux/trigger-reconcile@0e954d430fba93f7933008426e9069a89e1f7ff6 # main
+        uses: Altinn/altinn-platform/actions/flux/trigger-reconcile@96629ce10dc68e839968fbae100e7372c46d1454 # main
         with:
           url: https://ops.${{ inputs.environment }}.dis.altinn.cloud/flux-webhook
           receiver_name: dialogporten-manifests
