@@ -3,4 +3,4 @@ kind: Kustomization
 resources:
   - ../../../../jobs/aggregate-cost-metrics-job/base
 patches:
-  - path: delete.yaml
+  - path: env.yaml
