@@ -52,6 +52,27 @@ The migration bundle takes EF Core's migration lock, so runs that start at the s
 
 The `Job` uses the `dialogporten-secrets` Secret and the `web-api-migration-job` ServiceAccount, and `dialogporten-apps` creates both. On a cluster that has neither yet, the first migration cannot start, and `dialogporten-apps` waits for it. When onboarding an environment, patch `dependsOn` out of `dialogporten-apps` in its `flux/syncroot/<env>` overlay for the first rollout, then remove the patch.
 
+## Search reindex in at23
+The `reindex-search-job` CronJob is only a template: it stays suspended, and its schedule (`0 0 1 1 *`) is a placeholder. A run is a `Job` created from it by hand, with the reindex arguments for that run. This needs `kubectl` access to `dis-core-at23-aks` over the VPN, with rights to create Jobs in `product-dialogporten`. In the other environments, the reindex still runs as a Container App job through Altinn/dialogporten's dispatch workflows.
+
+Check that no run is active (`kubectl get jobs -n product-dialogporten | grep reindex-search`), then start one:
+
+```bash
+kubectl --context dis-core-at23-aks -n product-dialogporten create job --from=cronjob/reindex-search-job \
+  "reindex-search-$(date -u +%Y%m%d%H%M)" --dry-run=client -o json \
+  | jq '.spec.ttlSecondsAfterFinished = 86400
+        | .spec.template.spec.containers[0].args = ["reindex-dialogsearch", "--resume"]
+        | .spec.template.spec.containers[0].env |= map(select(.name != "OTEL_EXPORTER_OTLP_ENDPOINT" and .name != "OTEL_EXPORTER_OTLP_PROTOCOL"))' \
+  | kubectl --context dis-core-at23-aks -n product-dialogporten create -f -
+```
+
+- **Arguments:** replace `"--resume"` with the run's arguments. The modes are `--full`, `--since <ISO 8601 timestamp>`, `--resume` and `--stale-only`. The options are `--stale-first`, `--batch-size`, `--workers`, `--throttle-ms` and `--work-mem-bytes`. The Altinn/dialogporten janitor README describes them; the dispatch workflow defaults are a batch size of 2000 and 4 workers.
+- **Progress:** `kubectl logs -f job/<name>`. The command removes the OTLP endpoint from the `Job` so the janitor logs to stdout. With the endpoint set, its logs go to the platform collector, which drops everything below Warning, so progress would not show anywhere.
+- **Time limit:** the at23 `Job` has an `activeDeadlineSeconds` of 600. For a longer run, add `| .spec.activeDeadlineSeconds = <seconds>` to the `jq` filter. An interrupted run continues with `--resume`.
+- **Cancel:** `kubectl delete job <name>`. The pod stops, and a later `--resume` run picks up the rebuild queue.
+- **Capacity:** the container requests 4 CPUs and 8 GiB. If the pod stays `Pending`, no node has that much free.
+- **Cleanup:** `ttlSecondsAfterFinished` deletes the finished `Job` after a day. Flux does not manage these Jobs, so it does not recreate them.
+
 ## Workflow failure alerts
 
 - `workflow-update-all-image-tags.yml` updates tags from `repository_dispatch` and explicitly dispatches `publish-flux-artifacts.yml` after pushing a change. Its failure notification depends on the entire update job, including input validation and the publish dispatch.
