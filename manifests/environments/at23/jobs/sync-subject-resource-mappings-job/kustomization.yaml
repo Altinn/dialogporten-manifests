@@ -4,3 +4,4 @@ resources:
   - ../../../../jobs/sync-subject-resource-mappings-job/base
 patches:
   - path: env.yaml
+  - path: suspend.yaml

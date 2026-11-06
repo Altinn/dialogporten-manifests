@@ -5,3 +5,4 @@ resources:
 patches:
   - path: env.yaml
   - path: schedule.yaml
+  - path: suspend.yaml
