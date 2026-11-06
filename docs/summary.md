@@ -7,15 +7,16 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/environments/<env>/`: Env entrypoint that pulls all overlays and sets image tags.
 - `manifests/apps/<app>/base/`: Canonical per-app base manifests used by environment overlays.
 - `manifests/environments/<env>/apps/<app>/`: Per-env app overlays that patch app bases.
-- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + Kustomization that selects the right `./environments/<env>` path within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile.
+- `manifests/environments/<env>/migration/`: The database migration `Job` (`manifests/jobs/web-api-migration-job/base/`) with the env's patch and migration-bundle image tag. See [Database migrations](#database-migrations).
+- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + two Kustomizations: `dialogporten-migration` selects `./environments/<env>/migration`, and `dialogporten-apps` selects `./environments/<env>` within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile.
 - `flux/edge-syncroot/`: Edge proxy routing (Envoy Gateway `Backend`, `BackendTLSPolicy`, `HTTPRoute`). The base uses `*.placeholder.invalid` hostnames; each `<env>` overlay patches the public hostname and the backend hostname. `tt02` and `prod` include `components/platform-apim`, which sends traffic to the old APIM through the platform-owned `platform/platform-upstream` `Backend` (and its `BackendTLSPolicy`); APIM strips the `/dialogporten` prefix, so those routes do not rewrite GraphQL paths. `dp-dis-upstream` is still rendered there, unused, so cutover is removing the component. Published as `dialogporten/edge-syncroot:<env>`.
 - `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
 ## Flow
 1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`) on every commit to `main`.
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
-3. Flux pulls the OCI artifact and the environment-specific `Kustomization` in `flux/syncroot/<env>` targets the `./environments/<env>` path within the artifact.
-4. Application container images remain on GHCR and are pinned in `manifests/environments/<env>/kustomization.yaml`.
+3. Flux pulls the OCI artifact. `dialogporten-migration` runs the migration `Job` from `./environments/<env>/migration`, and `dialogporten-apps` applies `./environments/<env>` once that `Job` has completed.
+4. Application container images remain on GHCR and are pinned in `manifests/environments/<env>/kustomization.yaml`. The migration bundle is pinned in `manifests/environments/<env>/migration/kustomization.yaml`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
@@ -34,6 +35,22 @@ The trigger is best effort (`continue-on-error: true`): the request only tells F
 Only `at23` is triggered today. It is the only environment on DIS core, and only its syncroot overlay has the `Receiver`, because a cluster without Flux 2.9 rejects the `generic-oidc` type. Runs without an `environment` (pushes to `main`, manual dispatch without the input) skip the trigger and rely on polling.
 
 The trigger does not tell CI whether the rollout succeeded. [RFC 0019](https://github.com/Altinn/altinn-platform/pull/4214) proposes that.
+
+## Database migrations
+New app images must not start before their database migrations have run. Two Flux Kustomizations in `flux/syncroot/base/dialogporten-flux-kustomization.yaml` read the same artifact:
+
+- `dialogporten-migration` applies the `web-api-migration-job` `Job` from `./environments/<env>/migration` with `wait: true`, so it is `Ready` only when the `Job` has completed. `force: true` replaces the `Job` when its image tag changes, because a `Job`'s pod template is immutable.
+- `dialogporten-apps` has `dependsOn: dialogporten-migration`. kustomize-controller holds back a Kustomization whose dependency reads the same source until that dependency has applied the current artifact revision, so the apps of a new revision wait for the migration of that same revision.
+
+If the migration fails, `dialogporten-migration` is not `Ready` and `dialogporten-apps` stays on its current images, so the running pods keep serving. The `Job` retries once (`backoffLimit: 1`). The Kustomization's 30-minute `timeout` only marks it not `Ready`; the `Job` keeps running up to its `activeDeadlineSeconds` of 24 hours.
+
+To run the migration again with the same tag, delete the `Job`. Flux recreates it on the next reconcile of `dialogporten-migration`. For the same reason, the `Job` has no `ttlSecondsAfterFinished`: a `Job` deleted by its TTL would be recreated and run again.
+
+The migration bundle takes EF Core's migration lock, so runs that start at the same time, for example one from another deploy pipeline against the same database, apply each migration only once.
+
+`workflow-update-all-image-tags.yml` sets the new tag in both `manifests/environments/<env>/kustomization.yaml` and `manifests/environments/<env>/migration/kustomization.yaml`.
+
+The `Job` uses the `dialogporten-secrets` Secret and the `web-api-migration-job` ServiceAccount, and `dialogporten-apps` creates both. On a cluster that has neither yet, the first migration cannot start, and `dialogporten-apps` waits for it. When onboarding an environment, patch `dependsOn` out of `dialogporten-apps` in its `flux/syncroot/<env>` overlay for the first rollout, then remove the patch.
 
 ## Workflow failure alerts
 

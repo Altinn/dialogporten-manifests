@@ -90,11 +90,22 @@ jobs:
             exit 1
           }
 
-          # flux/syncroot/base pins spec.path to one environment, so every overlay
-          # must patch it. An overlay that forgets would publish a syncroot that
-          # deploys the base environment's manifests instead of its own. Assert on
-          # the rendered path: a patch aimed at the wrong resource name parses fine
-          # but never applies, leaving the base's hardcoded spec.path in place.
+          # flux/syncroot/base pins spec.path of both Flux Kustomizations to one
+          # environment, so every overlay must patch them. An overlay that forgets
+          # would publish a syncroot that deploys the base environment's manifests
+          # instead of its own. Assert on the rendered paths, per Kustomization:
+          # a patch aimed at the wrong resource name parses fine but never
+          # applies, leaving the base's hardcoded spec.path in place.
+          rendered_path() {
+            # Prints spec.path of the named Flux Kustomization in a kustomize render.
+            awk -v want="$1" '
+              /^---/ { kind = ""; name = "" }
+              /^kind: / { kind = $2 }
+              kind == "Kustomization" && /^  name: / { name = $2 }
+              kind == "Kustomization" && name == want && /^  path: / { print $2 }
+            '
+          }
+
           for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
             overlay="./flux/syncroot/${env}/kustomization.yaml"
@@ -104,11 +115,16 @@ jobs:
               exit 1
             fi
 
-            selected=$(render_kustomize "./flux/syncroot/${env}" | sed -n 's/^[[:space:]]*path:[[:space:]]*//p')
-            if [ "$selected" != "./environments/${env}" ]; then
-              echo "::error::./flux/syncroot/${env}/ selects '${selected:-<none>}' but must select ./environments/${env}"
-              exit 1
-            fi
+            rendered=$(render_kustomize "./flux/syncroot/${env}")
+            for pair in "dialogporten-apps=./environments/${env}" "dialogporten-migration=./environments/${env}/migration"; do
+              name="${pair%%=*}"
+              expected="${pair#*=}"
+              selected=$(printf '%s\n' "$rendered" | rendered_path "$name")
+              if [ "$selected" != "$expected" ]; then
+                echo "::error::./flux/syncroot/${env}/ gives ${name} the path '${selected:-<none>}' but must give it ${expected}"
+                exit 1
+              fi
+            done
           done
 
       - name: Build and push syncroot artifact
@@ -287,6 +303,7 @@ jobs:
           for dir in ./manifests/environments/*/; do
             env=$(basename "$dir")
             build_kustomize "./manifests/environments/${env}"
+            build_kustomize "./manifests/environments/${env}/migration"
             build_kustomize "./flux/syncroot/${env}"
           done
 

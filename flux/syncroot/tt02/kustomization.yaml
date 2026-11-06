@@ -14,3 +14,14 @@ patches:
         namespace: product-dialogporten
       spec:
         path: ./environments/tt02
+  - target:
+      kind: Kustomization
+      name: dialogporten-migration
+    patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: dialogporten-migration
+        namespace: product-dialogporten
+      spec:
+        path: ./environments/tt02/migration
