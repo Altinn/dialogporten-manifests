@@ -1,0 +1,6 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-subject-resource-mappings-job
+spec:
+  suspend: false
