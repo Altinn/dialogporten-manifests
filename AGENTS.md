@@ -7,13 +7,15 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `manifests/`: app, job, and common bases plus per-environment overlays in `manifests/environments/<env>/`.
 - `manifests/apps/<app>/base/`: canonical reusable app base manifests consumed by each environment overlay.
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
-- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`. The `at23` overlay also has the `Receiver` for on-demand reconcile.
+- `manifests/environments/<env>/migration/`: the database migration `Job` for the env, applied by its own Flux Kustomization. See [Migration ordering](#migration-ordering).
+- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`, with two Flux Kustomizations: `dialogporten-migration` and `dialogporten-apps`. The `at23` overlay also has the `Receiver` for on-demand reconcile.
 - `flux/edge-syncroot/`: edge proxy routes (`Backend`, `BackendTLSPolicy`, `HTTPRoute`) per environment. The base uses `*.placeholder.invalid` hostnames and every `<env>` overlay must patch all of them; the `publish-edge-syncroot` job fails if any placeholder survives. `tt02` and `prod` include `components/platform-apim`, which routes through the old APIM via the platform-owned `platform/platform-upstream` `Backend`; reference it, do not redefine it. The cross-namespace `backendRef` needs a `ReferenceGrant` in the `platform` namespace.
 - `.github/workflows/publish-flux-artifacts.yml`: publishes OCI artifacts for syncroot and app manifests.
 - `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
 
 ## Registry model
 - Runtime app images: GHCR tags set in `manifests/environments/<env>/kustomization.yaml`. Exception: the feature-metrics collector image is pinned in `manifests/common/base/feature-metrics-collector.yaml`; do not move it to `images:`, which CI overwrites with the app tag.
+- Migration bundle: GHCR tag set in `manifests/environments/<env>/migration/kustomization.yaml`. `workflow-update-all-image-tags.yml` must update that file together with the env `kustomization.yaml`.
 - Flux manifests artifacts: ACR (`altinncr.azurecr.io`), published as:
   - `dialogporten/dialogporten-sync:main` (app manifests)
   - `dialogporten/syncroot:main` (syncroot)
@@ -38,6 +40,14 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - The `Receiver` lists only the `OCIRepository`. Do not add the `Kustomization`: it reconciles when the source revision changes, and triggering it directly can run it before the new artifact is fetched.
 - The `Receiver` validations pin this repository by numeric id and the `main` ref. Do not relax them to names or to the organization alone: GitHub issues OIDC tokens to every repository.
 
+## Migration ordering
+
+- `dialogporten-migration` applies only the migration `Job` from `./environments/<env>/migration`, with `wait: true` and `force: true`. `dialogporten-apps` has `dependsOn: dialogporten-migration`, so new app images roll out only after the migration of the same artifact revision has completed. See `docs/summary.md` for the flow.
+- Keep the migration `Job` out of `./environments/<env>`; in that path it would roll out alongside the apps instead of before them.
+- Do not add `ttlSecondsAfterFinished` to the migration `Job`. Flux recreates a deleted `Job` on its next reconcile, so the migration would run again after every TTL expiry.
+- Keep the `web-api-migration-job` `ApplicationIdentity` in `./environments/<env>` (`manifests/jobs/web-api-migration-job/identity/`). Moving an object between the two Flux Kustomizations can prune it: the syncroot and app artifacts reach the cluster independently, and the old owner deletes objects missing from its new build.
+- The `Job` needs `dialogporten-secrets` and the `web-api-migration-job` ServiceAccount, which `dialogporten-apps` creates. On a new cluster, patch `dependsOn` out of `dialogporten-apps` in the env's syncroot overlay for the first rollout, then remove the patch.
+
 ## Change hygiene (required)
 When changing structure, environments, Flux source wiring, workflow publish logic, or registry/source strategy, update all relevant guidance in the same PR:
 - `README.md`
@@ -47,10 +57,12 @@ When changing structure, environments, Flux source wiring, workflow publish logi
 
 ## Environment additions/removals
 If environment set changes, update all of:
-- `flux/syncroot/<env>/kustomization.yaml` — must patch `spec.path` to `./environments/<env>`.
-  The base pins `spec.path` to `at23`, so an overlay that omits the patch silently
+- `flux/syncroot/<env>/kustomization.yaml`: must patch `spec.path` of `dialogporten-apps` to
+  `./environments/<env>` and of `dialogporten-migration` to `./environments/<env>/migration`.
+  The base pins both paths to `at23`, so an overlay that omits a patch silently
   deploys at23's manifests. CI enforces this in both `pull-request.yml` and the
   `publish-syncroot` job of `publish-flux-artifacts.yml`.
+- `manifests/environments/<env>/migration/` (`kustomization.yaml` with the migration-bundle tag, and `env.yaml`)
 - validation loops in `.github/workflows/publish-flux-artifacts.yml`
 - `README.md`, `docs/summary.md`, and this file
 
@@ -100,3 +112,4 @@ Run before commit when relevant:
 - `kustomize build manifests/environments/tt02`
 - `kustomize build manifests/environments/yt01`
 - `kustomize build manifests/environments/prod`
+- `kustomize build manifests/environments/<env>/migration` for each of the env names above

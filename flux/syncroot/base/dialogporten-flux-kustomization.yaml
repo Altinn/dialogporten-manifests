@@ -1,3 +1,24 @@
+# Applies the database migration Job and waits for it to complete. force replaces the Job when its
+# image tag changes, because a Job's pod template is immutable.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: dialogporten-migration
+  namespace: product-dialogporten
+spec:
+  interval: 10m
+  timeout: 30m
+  wait: true
+  force: true
+  path: ./environments/at23/migration
+  prune: true
+  sourceRef:
+    kind: OCIRepository
+    name: dialogporten-manifests
+  targetNamespace: product-dialogporten
+---
+# Rolls out only after dialogporten-migration has applied the same artifact revision and is Ready,
+# so new images never start before their migrations have run.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -5,6 +26,8 @@ metadata:
   namespace: product-dialogporten
 spec:
   interval: 10m
+  dependsOn:
+    - name: dialogporten-migration
   path: ./environments/at23
   prune: true
   sourceRef:

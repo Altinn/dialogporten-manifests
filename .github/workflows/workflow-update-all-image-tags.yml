@@ -83,12 +83,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          FILE="manifests/environments/${ENVIRONMENT}/kustomization.yaml"
+          # The migration bundle tag lives in its own kustomization, applied by the
+          # dialogporten-migration Flux Kustomization. Both files must get the tag,
+          # or the apps roll out without the migration Job being replaced first.
+          FILES=(
+            "manifests/environments/${ENVIRONMENT}/kustomization.yaml"
+            "manifests/environments/${ENVIRONMENT}/migration/kustomization.yaml"
+          )
 
-          if [ ! -f "$FILE" ]; then
-            echo "::error::File not found: $FILE"
-            exit 1
-          fi
+          for FILE in "${FILES[@]}"; do
+            if [ ! -f "$FILE" ]; then
+              echo "::error::File not found: $FILE"
+              exit 1
+            fi
+          done
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -106,7 +114,9 @@ jobs:
             git fetch origin +refs/heads/main:refs/remotes/origin/main
             git reset --hard refs/remotes/origin/main
 
-            yq -i '(.images[].newTag) = strenv(IMAGE_TAG)' "$FILE"
+            for FILE in "${FILES[@]}"; do
+              yq -i '(.images[].newTag) = strenv(IMAGE_TAG)' "$FILE"
+            done
 
             if git diff --quiet; then
               echo "changed=false" >> "$GITHUB_OUTPUT"
