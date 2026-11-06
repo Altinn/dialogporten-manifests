@@ -48,6 +48,11 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - Keep the `web-api-migration-job` `ApplicationIdentity` in `./environments/<env>` (`manifests/jobs/web-api-migration-job/identity/`). Moving an object between the two Flux Kustomizations can prune it: the syncroot and app artifacts reach the cluster independently, and the old owner deletes objects missing from its new build.
 - The `Job` needs `dialogporten-secrets` and the `web-api-migration-job` ServiceAccount, which `dialogporten-apps` creates. On a new cluster, patch `dependsOn` out of `dialogporten-apps` in the env's syncroot overlay for the first rollout, then remove the patch.
 
+## Search reindex
+
+- `reindex-search-job` is a template for runs started by hand (`docs/summary.md#search-reindex-in-at23`). Keep it suspended in every environment, and keep its placeholder schedule: unsuspending it would start a reindex on that schedule.
+- Keep the `docs/summary.md` command in sync with the CronJob: if the container, its env var names or its arguments change, update the command too.
+
 ## Change hygiene (required)
 When changing structure, environments, Flux source wiring, workflow publish logic, or registry/source strategy, update all relevant guidance in the same PR:
 - `README.md`
