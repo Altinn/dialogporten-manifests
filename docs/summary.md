@@ -77,16 +77,21 @@ kubectl --context dis-core-at23-aks -n product-dialogporten create job --from=cr
 
 `manifests/jobs/db-provisioner-job/base/` defines a suspended `CronJob`
 (`db-provisioner-job`) that registers a PostgreSQL login role per AKS workload identity
-and grants it a least-privilege profile role. It is run on demand, like
-`web-api-migration-job`:
+and grants it a least-privilege profile role. Like `reindex-search-job`, the `CronJob` is
+only a template: it stays suspended, and a run is a `Job` created from it by hand. This
+needs `kubectl` access to `dis-core-at23-aks` over the VPN, with rights to create Jobs in
+`product-dialogporten`:
 
-```
-kubectl create job --from=cronjob/db-provisioner-job db-provisioner-<date> -n product-dialogporten
+```bash
+kubectl --context dis-core-at23-aks -n product-dialogporten create job \
+  --from=cronjob/db-provisioner-job "db-provisioner-$(date -u +%Y%m%d%H%M)"
 ```
 
 Complete the [first run prerequisites](../README.md#first-run-prerequisites) before
-using this command. The [provisioner bootstrap runbook](https://github.com/Altinn/dialogporten/blob/3a15eb561e313e557cb63144c4e134f6d89d4129/.azure/modules/postgreSql/provisioner/README.md#bootstrap-and-rollout)
-describes the corresponding database setup.
+using this command. The [provisioner bootstrap runbook](https://github.com/Altinn/dialogporten/blob/main/.azure/modules/postgreSql/provisioner/README.md#bootstrap-and-rollout)
+in the `dialogporten` repo describes the corresponding database setup. Follow the run with
+`kubectl logs -f job/<name>`. The `Job` is owned by the `CronJob`, which keeps the last
+successful and the last failed run.
 
 The run is additive and idempotent: missing roles and grants are created, existing ones
 are left as they are, so re-running after adding a workload is safe.
@@ -111,11 +116,11 @@ Notes:
   administrator on the PostgreSQL server. The registration lives in the `dialogporten`
   repo's infrastructure deployment, not here, and is a prerequisite for the job.
 - The image `ghcr.io/altinn/dialogporten-db-provisioner` is published by the
-  `dialogporten` repo and pinned in `manifests/environments/<env>/kustomization.yaml`
-  like the other images. Before the first run, replace the initial `at23` pin
-  `1.121.1-1de2b7c` with the exact tag from a successful provisioner image publish
-  containing Dialogporten PR #4407. Verify that image can be pulled; Kustomize
-  validation cannot establish this.
+  `dialogporten` repo with the app images and pinned in
+  `manifests/environments/<env>/kustomization.yaml` like them, so
+  `workflow-update-all-image-tags.yml` keeps it on the app tag. Tags published before
+  Dialogporten PR #4407 was merged have no provisioner image. Verify that the pinned
+  image can be pulled; Kustomize validation cannot establish this.
 - pgAudit is mandatory: allowlist `PGAUDIT`, add `pgaudit` to the existing
   `shared_preload_libraries` without dropping other libraries, manually restart
   during an agreed maintenance window if the setting changes, and install the

@@ -111,10 +111,11 @@ If environment set changes, update all of:
   not, so `/Health/liveness` still arrives via `/`: the split is not access control.
 
 ## Database role provisioning job
-- `manifests/jobs/db-provisioner-job/base/` holds the suspended `db-provisioner-job`
-  `CronJob`, the `db-provisioner` `ApplicationIdentity`, its `Role`/`RoleBinding`, and the
-  `db-provisioner-runtime` ConfigMap. Run it on demand with
-  `kubectl create job --from=cronjob/db-provisioner-job db-provisioner-<date> -n product-dialogporten`.
+- `manifests/jobs/db-provisioner-job/base/` holds the `db-provisioner-job` `CronJob`, the
+  `db-provisioner` `ApplicationIdentity`, its `Role`/`RoleBinding`, and the
+  `db-provisioner-runtime` ConfigMap. The `CronJob` is a template for runs started by hand
+  (`docs/summary.md#database-role-provisioning`). Keep it suspended in every environment,
+  with its placeholder schedule.
 - Do not create a `ServiceAccount` for it. The dis-identity-operator creates one with the
   same name as the `ApplicationIdentity` (Altinn/altinn-platform RFC 0004).
 - Do not add a secret to this job. It authenticates with its workload identity, which is
@@ -132,11 +133,11 @@ If environment set changes, update all of:
   when adding `pgaudit`; restart manually during an agreed maintenance window if the
   setting changes, then install and verify the extension in `dialogporten`. Production
   setup and any restart are manual operations, never part of manifest reconciliation.
-- Pin only a verified, published provisioner image containing the required code.
-  The initial `at23` tag `1.121.1-1de2b7c` must be replaced by the exact tag from a
-  successful publish containing Dialogporten PR #4407 before first execution.
-  Do not invent a replacement when publication is pending or inaccessible; report
-  the blocker and keep the CronJob suspended. Kustomize does not check image availability.
+- Keep `ghcr.io/altinn/dialogporten-db-provisioner` in the env `images:` block.
+  `dialogporten` publishes it with the app images, so `workflow-update-all-image-tags.yml`
+  keeps its pin current. Tags published before Dialogporten PR #4407 was merged have no
+  provisioner image: do not create a `Job` while the pin is one of them, and check that the
+  image can be pulled first. Kustomize does not check image availability.
 
 ## Validation baseline
 Run before commit when relevant:
