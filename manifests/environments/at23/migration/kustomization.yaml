@@ -7,4 +7,4 @@ patches:
   - path: env.yaml
 images:
   - name: ghcr.io/altinn/dialogporten-migration-bundle
-    newTag: 1.126.2-77ad008
+    newTag: 1.126.2-d4cfdcf
