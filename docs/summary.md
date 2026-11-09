@@ -41,7 +41,7 @@ In `at23`, `dialogporten-apps` has `wait: true` and a 15-minute `timeout`, patch
 
 - Flux judges custom resources only by `status.observedGeneration` and the `Reconciling` and `Stalled` conditions, so `ApplicationIdentity`, `ExternalSecret` and `ScaledObject` count as healthy at once. In practice the wait covers the `Deployment`s.
 - A rollout that stops making progress fails at the `Deployment`'s 10-minute progress deadline, without waiting for the full timeout. The 15 minutes leave room for a new node plus the 5-minute startup probe window.
-- While it waits, the Kustomization does not start another reconcile, so a newer artifact is applied once the current wait ends.
+- While it waits, the Kustomization does not start another reconcile, so a newer artifact is applied once the current wait ends. That is kustomize-controller's default; the opt-in `CancelHealthCheckOnNewRevision` feature gate would cancel the wait instead.
 - The other environments are unchanged.
 
 ## Database migrations
