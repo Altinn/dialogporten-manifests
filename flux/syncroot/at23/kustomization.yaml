@@ -16,6 +16,11 @@ patches:
         namespace: product-dialogporten
       spec:
         path: ./environments/at23
+        # RFC 0019 pilot: wait for the rollout, so Flux sends "Health check passed".
+        # 15m covers a new node plus the 5-minute startup probe window. A stuck
+        # rollout fails earlier, at the Deployment's 10-minute progress deadline.
+        wait: true
+        timeout: 15m
   - target:
       kind: Kustomization
       name: dialogporten-migration
