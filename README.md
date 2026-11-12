@@ -14,7 +14,7 @@ This repository contains the Flux wiring and workload manifests for Dialogporten
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
 
 ## OCI flow (high level)
-1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot`, edge-syncroot from `flux/edge-syncroot` (`dialogporten/edge-syncroot:<env>`), and app manifests from `manifests/`.
+1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`): syncroot from `flux/syncroot` (only when it changes; see [Syncroot publishing](docs/summary.md#syncroot-publishing)), edge-syncroot from `flux/edge-syncroot` (`dialogporten/edge-syncroot:<env>`), and app manifests from `manifests/`.
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
 3. Flux pulls that OCI artifact. The environment-specific Kustomizations in `flux/syncroot/<env>` run the migration `Job` from `./environments/<env>/migration` to completion, then apply the `./environments/<env>` path within the artifact.
 4. After an image-tag update, CI asks the environment's cluster to pull the new artifact right away instead of at the next 10-minute poll. See [On-demand reconcile](docs/summary.md#on-demand-reconcile).
