@@ -42,8 +42,9 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 
 ## Rollout health checks
 
-- The `at23` syncroot overlay sets `wait: true` and `timeout: 15m` on `dialogporten-apps`, so Flux sends the `Health check passed` event that RFC 0019 uses. Keep it out of `flux/syncroot/base/` until the pilot extends to other environments.
-- The wait covers the `Deployment`s. Custom resources count as healthy unless they report `status.observedGeneration` or the `Reconciling` or `Stalled` conditions. See `docs/summary.md#rollout-health-in-at23`.
+- The `at23` syncroot overlay gives `dialogporten-apps` `healthChecks` on its `Deployment`s and `timeout: 15m`, so Flux sends the `Health check passed` event that RFC 0019 uses. Keep it out of `flux/syncroot/base/` until the pilot extends to other environments.
+- When a `Deployment` is added to, renamed in or removed from `manifests/environments/at23`, update `healthChecks`. An unlisted `Deployment` is not checked, and a listed one that no longer exists fails every reconcile after the full timeout.
+- Do not replace `healthChecks` with `wait: true`. Flux would then also wait for every custom resource with a `Ready` condition, such as an `ExternalSecret` or `ScaledObject`, and report a failed rollout when one of them stays not ready. See `docs/summary.md#rollout-health-in-at23`.
 - Keep the timeout above the slowest expected rollout: the startup probes allow 5 minutes per pod.
 
 ## Migration ordering

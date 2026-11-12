@@ -37,9 +37,10 @@ Only `at23` is triggered today. It is the only environment on DIS core, and only
 The trigger does not tell CI whether the rollout succeeded. [RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md) covers that; see [Rollout health in at23](#rollout-health-in-at23).
 
 ## Rollout health in at23
-In `at23`, `dialogporten-apps` has `wait: true` and a 15-minute `timeout`, patched in `flux/syncroot/at23/kustomization.yaml`. Flux then marks it `Ready` only after every `Deployment` has rolled out, and sends the `Health check passed` event that RFC 0019 uses to report a successful rollout.
+In `at23`, `dialogporten-apps` has `healthChecks` on its five `Deployment`s and a 15-minute `timeout`, patched in `flux/syncroot/at23/kustomization.yaml`. Flux then marks it `Ready` only after every `Deployment` has rolled out, and sends the `Health check passed` event that RFC 0019 uses to report a successful rollout.
 
-- Flux judges custom resources only by `status.observedGeneration` and the `Reconciling` and `Stalled` conditions, so `ApplicationIdentity`, `ExternalSecret` and `ScaledObject` count as healthy at once. In practice the wait covers the `Deployment`s.
+- Only the `Deployment`s are checked. `wait: true` would also wait for the `ApplicationIdentity`, `ExternalSecret`, `SecretStore` and `ScaledObject` resources, because Flux treats a custom resource whose `Ready` condition is not `True` as still in progress. One that stays not ready for a reason unrelated to the release would then fail the rollout after 15 minutes. A secret or identity problem that keeps the new pods from becoming ready still fails it.
+- The list must match the `Deployment`s in the at23 overlay. An unlisted `Deployment` is not checked, and a listed one that no longer exists fails every reconcile after the full timeout.
 - A rollout that stops making progress fails at the `Deployment`'s 10-minute progress deadline, without waiting for the full timeout. The 15 minutes leave room for a new node plus the 5-minute startup probe window.
 - While it waits, the Kustomization does not start another reconcile, so a newer artifact is applied once the current wait ends. That is kustomize-controller's default; the opt-in `CancelHealthCheckOnNewRevision` feature gate would cancel the wait instead.
 - The other environments are unchanged.
