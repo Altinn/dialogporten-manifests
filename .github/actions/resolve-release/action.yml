@@ -1,7 +1,8 @@
 name: Resolve the Dialogporten release of a Flux revision
 description: >-
   Maps the originRevision of a Flux event to the Dialogporten version and commit that an
-  environment's overlay deploys at that revision. app_version and app_commit are empty when
+  environment's overlay deploys at that revision. Only image tags that name the commit
+  (<version>-<short commit>, as in at23) are mapped. app_version and app_commit are empty when
   the mapping is missing or ambiguous. Needs git and yq, which GitHub-hosted Ubuntu runners have.
 
 inputs:

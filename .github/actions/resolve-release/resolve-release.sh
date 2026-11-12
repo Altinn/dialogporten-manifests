@@ -29,24 +29,20 @@ tags=$(yq '.images[] | select(.name | test("^ghcr[.]io/altinn/dialogporten-")) |
 [ "$(grep -c . <<< "${tags}")" -eq 1 ] || unavailable "the overlay has no single Dialogporten image tag"
 tag=${tags}
 
+# Map only tags that name the commit: at23 deploys every commit on main as
+# <version>-<short commit>. The other environments deploy <version>, which only names a
+# release tag, and a tag can be moved. They stay unmapped until release tags are
+# immutable (Altinn/altinn-platform#4387).
+[[ "${tag}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-([0-9a-f]{7,40})$ ]] || unavailable "the image tag does not name a commit"
+short_commit=${BASH_REMATCH[1]}
+
 # Look the commit up only on main, which the Flux dispatch token cannot push to. A ref
 # lookup through the API would also match a branch or tag named like the commit.
 app=$(mktemp -d)
 git -C "${app}" init -q
 git -C "${app}" fetch -q --filter=tree:0 --no-tags https://github.com/Altinn/dialogporten.git \
   "+refs/heads/main:refs/remotes/origin/main" || unavailable "cannot fetch Dialogporten main"
-if [[ "${tag}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-([0-9a-f]{7,40})$ ]]; then
-  # at23 deploys every commit on main as <version>-<short commit>.
-  app_commit=$(git -C "${app}" rev-list origin/main | grep "^${BASH_REMATCH[1]}" || true)
-elif [[ "${tag}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  # The other environments deploy releases, tagged v<version> on main.
-  git -C "${app}" fetch -q --filter=tree:0 --no-tags https://github.com/Altinn/dialogporten.git \
-    "+refs/tags/v${tag}:refs/tags/v${tag}" || unavailable "tag v${tag} not found"
-  app_commit=$(git -C "${app}" rev-parse "v${tag}^{commit}")
-  git -C "${app}" merge-base --is-ancestor "${app_commit}" origin/main || unavailable "tag v${tag} is not on main"
-else
-  unavailable "unexpected image tag ${tag}"
-fi
+app_commit=$(git -C "${app}" rev-list origin/main | grep "^${short_commit}" || true)
 [ "$(grep -c . <<< "${app_commit}")" -eq 1 ] || unavailable "no single commit on main for ${tag}"
 
 echo "Release ${tag}, commit ${app_commit}"

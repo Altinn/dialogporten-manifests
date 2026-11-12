@@ -30,11 +30,9 @@ jobs:
             environment: at23
             app_version: 1.126.3-6edd26e
             app_commit: 6edd26e37450b0b20b9fc5abf629aa333c996f1f
-          - name: tt02 release
+          - name: tt02 release tag, not mapped
             origin_revision: main/5742a6a85fb025007d4359e7aa61b6893eb16513
             environment: tt02
-            app_version: 1.126.4
-            app_commit: f34c2d6a9d82ec05584633a5007cc0ed5d779e8c
           - name: Unknown commit
             origin_revision: main/0000000000000000000000000000000000000000
             environment: at23

@@ -49,6 +49,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 
 ## Release mapping
 - `.github/actions/resolve-release` maps the `originRevision` of a Flux event (`main/<commit>`) to the Dialogporten release by reading `images[].newTag` from `manifests/environments/<env>/kustomization.yaml` at that commit. `Altinn/dialogporten` pins it in the workflow that receives Flux results. See `docs/summary.md#release-of-a-flux-revision`.
+- Map only image tags that name the Dialogporten commit (`<version>-<short commit>`). Do not resolve a `<version>` tag through the `v<version>` Git tag until release tags are immutable: a moved tag would give a result the wrong commit.
 - If the overlay path, the Dialogporten image names, the tag format or the app artifact's `--revision` change, update the action and the cases in `test-resolve-release.yml` in the same PR.
 
 ## Migration ordering

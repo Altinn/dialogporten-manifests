@@ -49,7 +49,7 @@ In `at23`, `dialogporten-apps` has `healthChecks` on its five `Deployment`s and 
 Flux sends the result of each at23 rollout to `Altinn/dialogporten` ([RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md)). The event names the artifact (`revision`, `main@sha256:<digest>`) and the commit of this repository it was published from (`originRevision`, `main/<commit>`), but not the Dialogporten release. The receiving workflow gets that from `.github/actions/resolve-release`:
 
 1. The action reads `manifests/environments/<env>/kustomization.yaml` at that commit. Every Dialogporten image must have the same tag.
-2. An at23 tag is `<version>-<short commit>`, and the action finds the full commit among the commits on Dialogporten's `main`. The other environments deploy `<version>`, and the action reads the tag `v<version>` and checks that it is on `main`.
+2. An at23 tag is `<version>-<short commit>`, and the action finds the full commit among the commits on Dialogporten's `main`. The other environments deploy `<version>`, which only names a release tag, and a tag can be moved. The action leaves them unmapped until release tags are immutable ([altinn-platform#4387](https://github.com/Altinn/altinn-platform/issues/4387)).
 
 A commit cannot change, so the mapping never reads a mutable tag, and a result never gets the release of another revision. When a step fails, `app_version` and `app_commit` are empty. Before a follow-up job relies on them, compare `app_version` with the version the environment runs; Dialogporten has no endpoint for that yet.
 
