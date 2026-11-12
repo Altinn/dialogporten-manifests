@@ -8,7 +8,7 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/apps/<app>/base/`: Canonical per-app base manifests used by environment overlays.
 - `manifests/environments/<env>/apps/<app>/`: Per-env app overlays that patch app bases.
 - `manifests/environments/<env>/migration/`: The database migration `Job` (`manifests/jobs/web-api-migration-job/base/`) with the env's patch and migration-bundle image tag. See [Database migrations](#database-migrations).
-- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + two Kustomizations: `dialogporten-migration` selects `./environments/<env>/migration`, and `dialogporten-apps` selects `./environments/<env>` within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile.
+- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + two Kustomizations: `dialogporten-migration` selects `./environments/<env>/migration`, and `dialogporten-apps` selects `./environments/<env>` within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile, and makes `dialogporten-apps` wait for its rollout (see [Rollout health in at23](#rollout-health-in-at23)).
 - `flux/edge-syncroot/`: Edge proxy routing (Envoy Gateway `Backend`, `BackendTLSPolicy`, `HTTPRoute`). The base uses `*.placeholder.invalid` hostnames; each `<env>` overlay patches the public hostname and the backend hostname. `tt02` and `prod` include `components/platform-apim`, which sends traffic to the old APIM through the platform-owned `platform/platform-upstream` `Backend` (and its `BackendTLSPolicy`); APIM strips the `/dialogporten` prefix, so those routes do not rewrite GraphQL paths. `dp-dis-upstream` is still rendered there, unused, so cutover is removing the component. Published as `dialogporten/edge-syncroot:<env>`.
 - `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
@@ -34,7 +34,16 @@ The trigger is best effort (`continue-on-error: true`): the request only tells F
 
 Only `at23` is triggered today. It is the only environment on DIS core, and only its syncroot overlay has the `Receiver`, because a cluster without Flux 2.9 rejects the `generic-oidc` type. Runs without an `environment` (pushes to `main`, manual dispatch without the input) skip the trigger and rely on polling.
 
-The trigger does not tell CI whether the rollout succeeded. [RFC 0019](https://github.com/Altinn/altinn-platform/pull/4214) proposes that.
+The trigger does not tell CI whether the rollout succeeded. [RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md) covers that; see [Rollout health in at23](#rollout-health-in-at23).
+
+## Rollout health in at23
+In `at23`, `dialogporten-apps` has `healthChecks` on its five `Deployment`s and a 15-minute `timeout`, patched in `flux/syncroot/at23/kustomization.yaml`. Flux then marks it `Ready` only after every `Deployment` has rolled out, and sends the `Health check passed` event that RFC 0019 uses to report a successful rollout.
+
+- Only the `Deployment`s are checked. `wait: true` would also wait for the `ApplicationIdentity`, `ExternalSecret`, `SecretStore` and `ScaledObject` resources, because Flux treats a custom resource whose `Ready` condition is not `True` as still in progress. One that stays not ready for a reason unrelated to the release would then fail the rollout after 15 minutes. A secret or identity problem that keeps the new pods from becoming ready still fails it.
+- The list must match the `Deployment`s in the at23 overlay. An unlisted `Deployment` is not checked, and a listed one that no longer exists fails every reconcile after the full timeout.
+- A rollout that stops making progress fails at the `Deployment`'s 10-minute progress deadline, without waiting for the full timeout. The 15 minutes leave room for a new node plus the 5-minute startup probe window.
+- While it waits, the Kustomization does not start another reconcile, so a newer artifact is applied once the current wait ends. That is kustomize-controller's default; the opt-in `CancelHealthCheckOnNewRevision` feature gate would cancel the wait instead.
+- The other environments are unchanged.
 
 ## Database migrations
 New app images must not start before their database migrations have run. Two Flux Kustomizations in `flux/syncroot/base/dialogporten-flux-kustomization.yaml` read the same artifact:

@@ -16,6 +16,33 @@ patches:
         namespace: product-dialogporten
       spec:
         path: ./environments/at23
+        # RFC 0019 pilot: Flux sends "Health check passed" once these Deployments
+        # have rolled out. List every Deployment in ./environments/at23. Not
+        # wait: true, which also waits for custom resources such as ExternalSecrets.
+        # 15m covers a new node plus the 5-minute startup probe window. A stuck
+        # rollout fails earlier, at the Deployment's 10-minute progress deadline.
+        healthChecks:
+          - apiVersion: apps/v1
+            kind: Deployment
+            name: feature-metrics-collector
+            namespace: product-dialogporten
+          - apiVersion: apps/v1
+            kind: Deployment
+            name: graphql
+            namespace: product-dialogporten
+          - apiVersion: apps/v1
+            kind: Deployment
+            name: service
+            namespace: product-dialogporten
+          - apiVersion: apps/v1
+            kind: Deployment
+            name: web-api-eu
+            namespace: product-dialogporten
+          - apiVersion: apps/v1
+            kind: Deployment
+            name: web-api-so
+            namespace: product-dialogporten
+        timeout: 15m
   - target:
       kind: Kustomization
       name: dialogporten-migration
