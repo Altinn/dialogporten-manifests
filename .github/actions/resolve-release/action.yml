@@ -1,0 +1,34 @@
+name: Resolve the Dialogporten release of a Flux revision
+description: >-
+  Maps the originRevision of a Flux event to the Dialogporten version and commit that an
+  environment's overlay deploys at that revision. app_version and app_commit are empty when
+  the mapping is missing or ambiguous. Needs git and yq, which GitHub-hosted Ubuntu runners have.
+
+inputs:
+  origin_revision:
+    description: "originRevision of the Flux event: main/<commit of this repository>"
+    required: true
+  environment:
+    description: "Environment of the event, for example at23"
+    required: true
+
+outputs:
+  manifests_commit:
+    description: "Commit of this repository that the artifact was published from"
+    value: ${{ steps.resolve.outputs.manifests_commit }}
+  app_version:
+    description: "Tag of the Dialogporten images in the environment overlay at that commit"
+    value: ${{ steps.resolve.outputs.app_version }}
+  app_commit:
+    description: "Full Dialogporten commit of that tag, found on main"
+    value: ${{ steps.resolve.outputs.app_commit }}
+
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      shell: bash
+      env:
+        ORIGIN_REVISION: ${{ inputs.origin_revision }}
+        ENVIRONMENT: ${{ inputs.environment }}
+      run: bash "${GITHUB_ACTION_PATH}/resolve-release.sh"

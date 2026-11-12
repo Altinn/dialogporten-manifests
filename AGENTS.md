@@ -47,6 +47,10 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - Do not replace `healthChecks` with `wait: true`. Flux would then also wait for every custom resource with a `Ready` condition, such as an `ExternalSecret` or `ScaledObject`, and report a failed rollout when one of them stays not ready. See `docs/summary.md#rollout-health-in-at23`.
 - Keep the timeout above the slowest expected rollout: the startup probes allow 5 minutes per pod.
 
+## Release mapping
+- `.github/actions/resolve-release` maps the `originRevision` of a Flux event (`main/<commit>`) to the Dialogporten release by reading `images[].newTag` from `manifests/environments/<env>/kustomization.yaml` at that commit. `Altinn/dialogporten` pins it in the workflow that receives Flux results. See `docs/summary.md#release-of-a-flux-revision`.
+- If the overlay path, the Dialogporten image names, the tag format or the app artifact's `--revision` change, update the action and the cases in `test-resolve-release.yml` in the same PR.
+
 ## Migration ordering
 
 - `dialogporten-migration` applies only the migration `Job` from `./environments/<env>/migration`, with `wait: true` and `force: true`. `dialogporten-apps` has `dependsOn: dialogporten-migration`, so new app images roll out only after the migration of the same artifact revision has completed. See `docs/summary.md` for the flow.

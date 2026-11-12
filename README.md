@@ -18,6 +18,7 @@ Current environments: `at23`, `tt02`, `yt01`, `prod`.
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
 3. Flux pulls that OCI artifact. The environment-specific Kustomizations in `flux/syncroot/<env>` run the migration `Job` from `./environments/<env>/migration` to completion, then apply the `./environments/<env>` path within the artifact.
 4. After an image-tag update, CI asks the environment's cluster to pull the new artifact right away instead of at the next 10-minute poll. See [On-demand reconcile](docs/summary.md#on-demand-reconcile).
+5. Flux sends the at23 rollout result to `Altinn/dialogporten`, which maps it to the Dialogporten release with `.github/actions/resolve-release`. See [Release of a Flux revision](docs/summary.md#release-of-a-flux-revision).
 
 Application runtime images remain GHCR-hosted and are pinned by tags in `manifests/environments/<env>/kustomization.yaml`. Two images are the exception: the migration bundle is pinned in `manifests/environments/<env>/migration/kustomization.yaml`, and the feature-metrics collector in `manifests/common/base/feature-metrics-collector.yaml`.
 
