@@ -127,7 +127,34 @@ jobs:
             done
           done
 
+      - name: Set up Flux and log in to ACR
+        uses: Altinn/altinn-platform/actions/flux/setup-flux-acr@b0c9762442f2f97346d8b115c30903df903fc010 # main
+        with:
+          azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
+          azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}
+
+      # Each new syncroot artifact makes the platform's syncroot Kustomization
+      # reconcile and wait for dialogporten-apps, which times out during slow
+      # rollouts (#108). Push only when flux/syncroot differs from the published
+      # artifact. Any error, such as a missing tag, counts as a difference.
+      - name: Compare with the published syncroot artifact
+        id: compare
+        shell: bash
+        env:
+          ARTIFACT_URL: oci://altinncr.azurecr.io/${{ env.SYNCROOT_ARTIFACT_NAME }}:${{ matrix.tag }}
+        run: |
+          set -euo pipefail
+
+          if flux diff artifact "$ARTIFACT_URL" --path=./flux/syncroot --provider=azure; then
+            echo "::notice::./flux/syncroot matches ${ARTIFACT_URL}, so it is not published again."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push syncroot artifact
+        if: steps.compare.outputs.changed == 'true'
         uses: Altinn/altinn-platform/actions/flux/build-push-image@523f141da4f116fdd7331585396d83a5d7ade7ea # main
         with:
           image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}

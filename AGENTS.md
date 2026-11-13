@@ -18,9 +18,14 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - Migration bundle: GHCR tag set in `manifests/environments/<env>/migration/kustomization.yaml`. `workflow-update-all-image-tags.yml` must update that file together with the env `kustomization.yaml`.
 - Flux manifests artifacts: ACR (`altinncr.azurecr.io`), published as:
   - `dialogporten/dialogporten-sync:main` (app manifests)
-  - `dialogporten/syncroot:main` (syncroot)
+  - `dialogporten/syncroot:<env>` (syncroot; envs listed in the `publish-syncroot` matrix). See [Syncroot publishing](#syncroot-publishing).
   - `dialogporten/edge-syncroot:<env>` (edge-syncroot; envs listed in the `publish-edge-syncroot` matrix)
 - Flux app `Kustomization` objects apply environment wrappers directly and do not use `postBuild.substituteFrom`.
+
+## Syncroot publishing
+
+- `publish-syncroot` pushes only when `flux/syncroot` differs from the published `dialogporten/syncroot:<env>` artifact, checked with `flux diff artifact`. Every new artifact makes the platform's syncroot Kustomization reconcile and wait for `dialogporten-apps`, and that wait times out during slow rollouts. See `docs/summary.md#syncroot-publishing`.
+- Keep comparison errors counting as a difference, so a missing tag, for example for a new environment, still publishes.
 
 ## Workflow failure notifications
 

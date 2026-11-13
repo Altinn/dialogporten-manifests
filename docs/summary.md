@@ -13,12 +13,19 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
 ## Flow
-1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`) on every commit to `main`.
+1. CI publishes Flux OCI artifacts to ACR (`altinncr.azurecr.io`) on every commit to `main`, and the syncroot only when it changes. See [Syncroot publishing](#syncroot-publishing).
 2. `flux/syncroot/` defines an `OCIRepository` pointing to `oci://altinncr.azurecr.io/dialogporten/dialogporten-sync` with `tag: main`.
 3. Flux pulls the OCI artifact. `dialogporten-migration` runs the migration `Job` from `./environments/<env>/migration`, and `dialogporten-apps` applies `./environments/<env>` once that `Job` has completed.
 4. Application container images remain on GHCR and are pinned in `manifests/environments/<env>/kustomization.yaml`. The migration bundle is pinned in `manifests/environments/<env>/migration/kustomization.yaml`.
 
 Current environments: `at23`, `tt02`, `yt01`, `prod`.
+
+## Syncroot publishing
+The platform's syncroot Kustomization applies `flux/syncroot/<env>` and waits up to 5 minutes for everything in it to be ready, including `dialogporten-apps`. Each new syncroot artifact starts that wait, so publishing it on every commit made it time out during slow rollouts ([#108](https://github.com/Altinn/dialogporten-manifests/issues/108)).
+
+`publish-syncroot` therefore compares `flux/syncroot` with the published `dialogporten/syncroot:<env>` artifact (`flux diff artifact`) and pushes only when they differ. Flux builds the comparison tarball without timestamps or file owners, so unchanged files match. Any comparison error, such as a missing tag, counts as a difference, and the next run retries a failed push.
+
+The syncroot still reconciles every hour, so a failed rollout still turns it not ready.
 
 ## On-demand reconcile
 The `OCIRepository` polls every 10 minutes, so a published artifact can wait up to 10 minutes before the cluster notices it. An image-tag update asks the cluster to fetch it right away ([RFC 0017](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0017-on-demand-flux-reconcile.md)):
