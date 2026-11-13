@@ -127,6 +127,35 @@ If environment set changes, update all of:
   gets 403 on it and that probe fails. Linkerd matches paths case-sensitively and ASP.NET does
   not, so `/Health/liveness` still arrives via `/`: the split is not access control.
 
+## Database role provisioning job
+- `manifests/jobs/db-provisioner-job/base/` holds the `db-provisioner-job` `CronJob`, the
+  `db-provisioner` `ApplicationIdentity`, its `Role`/`RoleBinding`, and the
+  `db-provisioner-runtime` ConfigMap. The `CronJob` is a template for runs started by hand
+  (`docs/summary.md#database-role-provisioning`). Keep it suspended in every environment,
+  with its placeholder schedule.
+- Do not create a `ServiceAccount` for it. The dis-identity-operator creates one with the
+  same name as the `ApplicationIdentity` (Altinn/altinn-platform RFC 0004).
+- Do not add a secret to this job. It authenticates with its workload identity, which is
+  why the pod template carries `azure.workload.identity/use: "true"`.
+- Workload lists are environment data: keep them in the overlay's `db-provisioner-runtime`
+  patch (`PGHOST`, `PROVISION_WORKLOADS`), never in the base. Identity ids stay out of the
+  repo: the job reads them from the `ApplicationIdentity` status.
+- Adding an environment means adding the overlay, listing it in that env's
+  `jobs/kustomization.yaml`, and adding `ghcr.io/altinn/dialogporten-db-provisioner` to
+  that env's `images:` block.
+- Before the first run, follow [README prerequisites](README.md#first-run-prerequisites)
+  and the linked provisioner bootstrap runbook. Register the AKS identity as an Entra
+  administrator, create the workload identities, and apply migrations first.
+- pgAudit is mandatory in the target database. Preserve existing preload libraries
+  when adding `pgaudit`; restart manually during an agreed maintenance window if the
+  setting changes, then install and verify the extension in `dialogporten`. Production
+  setup and any restart are manual operations, never part of manifest reconciliation.
+- Keep `ghcr.io/altinn/dialogporten-db-provisioner` in the env `images:` block.
+  `dialogporten` publishes it with the app images, so `workflow-update-all-image-tags.yml`
+  keeps its pin current. Tags published before Dialogporten PR #4407 was merged have no
+  provisioner image: do not create a `Job` while the pin is one of them, and check that the
+  image can be pulled first. Kustomize does not check image availability.
+
 ## Validation baseline
 Run before commit when relevant:
 - `actionlint` for workflow changes

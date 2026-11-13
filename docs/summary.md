@@ -99,6 +99,66 @@ kubectl --context dis-core-at23-aks -n product-dialogporten create job --from=cr
 - **Capacity:** the container requests 4 CPUs and 8 GiB. If the pod stays `Pending`, no node has that much free.
 - **Cleanup:** `ttlSecondsAfterFinished` deletes the finished `Job` after a day. Flux does not manage these Jobs, so it does not recreate them.
 
+## Database role provisioning
+
+`manifests/jobs/db-provisioner-job/base/` defines a suspended `CronJob`
+(`db-provisioner-job`) that registers a PostgreSQL login role per AKS workload identity
+and grants it a least-privilege profile role. Like `reindex-search-job`, the `CronJob` is
+only a template: it stays suspended, and a run is a `Job` created from it by hand. This
+needs `kubectl` access to `dis-core-at23-aks` over the VPN, with rights to create Jobs in
+`product-dialogporten`:
+
+```bash
+kubectl --context dis-core-at23-aks -n product-dialogporten create job \
+  --from=cronjob/db-provisioner-job "db-provisioner-$(date -u +%Y%m%d%H%M)"
+```
+
+Complete the [first run prerequisites](../README.md#first-run-prerequisites) before
+using this command. The [provisioner bootstrap runbook](https://github.com/Altinn/dialogporten/blob/main/.azure/modules/postgreSql/provisioner/README.md#bootstrap-and-rollout)
+in the `dialogporten` repo describes the corresponding database setup. Follow the run with
+`kubectl logs -f job/<name>`. The `Job` is owned by the `CronJob`, which keeps the last
+successful and the last failed run.
+
+The run is additive and idempotent: missing roles and grants are created, existing ones
+are left as they are, so re-running after adding a workload is safe.
+
+The base ships the `ApplicationIdentity` `db-provisioner`, a `Role`/`RoleBinding` letting
+it read `applicationidentities`, the `db-provisioner-runtime` ConfigMap with placeholder
+values, and the `CronJob` itself. Environment overlays patch the ConfigMap:
+
+| Key | Meaning |
+| --- | --- |
+| `PGHOST` | PostgreSQL server for that environment |
+| `PROVISION_WORKLOADS` | JSON array of `{ applicationIdentity, profile }` entries |
+
+Each entry names an `ApplicationIdentity` in the same namespace; the job resolves its
+managed identity name and object id from the resource status at runtime, so identity ids
+are never checked in.
+
+Notes:
+- The pod carries `azure.workload.identity/use: "true"` and mounts no secret; it
+  authenticates as its own identity.
+- That identity (`product-dialogporten-db-provisioner`) must be a Microsoft Entra
+  administrator on the PostgreSQL server. The registration lives in the `dialogporten`
+  repo's infrastructure deployment, not here, and is a prerequisite for the job.
+- The image `ghcr.io/altinn/dialogporten-db-provisioner` is published by the
+  `dialogporten` repo with the app images and pinned in
+  `manifests/environments/<env>/kustomization.yaml` like them, so
+  `workflow-update-all-image-tags.yml` keeps it on the app tag. Tags published before
+  Dialogporten PR #4407 was merged have no provisioner image. Verify that the pinned
+  image can be pulled; Kustomize validation cannot establish this.
+- pgAudit is mandatory: allowlist `PGAUDIT`, add `pgaudit` to the existing
+  `shared_preload_libraries` without dropping other libraries, manually restart
+  during an agreed maintenance window if the setting changes, and install the
+  extension in **dialogporten**. Verify the active preload value and installed
+  extension before provisioning. Production setup and any restart are manual;
+  the job only checks these prerequisites and fails if they are missing.
+- Keep the CronJob suspended. Create an on-demand Job only after the image,
+  administrator registration, workload identities, migrations, and pgAudit are
+  ready; verify a fresh-session login and auditing before switching workloads
+  to Entra token authentication.
+- Wired for `at23` only so far.
+
 ## Workflow failure alerts
 
 - `workflow-update-all-image-tags.yml` updates tags from `repository_dispatch` and explicitly dispatches `publish-flux-artifacts.yml` after pushing a change. Its failure notification depends on the entire update job, including input validation and the publish dispatch.
