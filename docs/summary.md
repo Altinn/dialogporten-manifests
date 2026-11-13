@@ -8,7 +8,7 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/apps/<app>/base/`: Canonical per-app base manifests used by environment overlays.
 - `manifests/environments/<env>/apps/<app>/`: Per-env app overlays that patch app bases.
 - `manifests/environments/<env>/migration/`: The database migration `Job` (`manifests/jobs/web-api-migration-job/base/`) with the env's patch and migration-bundle image tag. See [Database migrations](#database-migrations).
-- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + two Kustomizations: `dialogporten-migration` selects `./environments/<env>/migration`, and `dialogporten-apps` selects `./environments/<env>` within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile, and makes `dialogporten-apps` wait for its rollout (see [Rollout health in at23](#rollout-health-in-at23)).
+- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + two Kustomizations: `dialogporten-migration` selects `./environments/<env>/migration`, and `dialogporten-apps` selects `./environments/<env>` within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile, makes `dialogporten-apps` wait for its rollout (see [Rollout health in at23](#rollout-health-in-at23)), and sends rollout results to `Altinn/dialogporten` (see [Flux results in at23](#flux-results-in-at23)).
 - `flux/edge-syncroot/`: Edge proxy routing (Envoy Gateway `Backend`, `BackendTLSPolicy`, `HTTPRoute`). The base uses `*.placeholder.invalid` hostnames; each `<env>` overlay patches the public hostname and the backend hostname. `tt02` and `prod` include `components/platform-apim`, which sends traffic to the old APIM through the platform-owned `platform/platform-upstream` `Backend` (and its `BackendTLSPolicy`); APIM strips the `/dialogporten` prefix, so those routes do not rewrite GraphQL paths. `dp-dis-upstream` is still rendered there, unused, so cutover is removing the component. Published as `dialogporten/edge-syncroot:<env>`.
 - `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
@@ -51,6 +51,15 @@ In `at23`, `dialogporten-apps` has `healthChecks` on its five `Deployment`s and 
 - A rollout that stops making progress fails at the `Deployment`'s 10-minute progress deadline, without waiting for the full timeout. The 15 minutes leave room for a new node plus the 5-minute startup probe window.
 - While it waits, the Kustomization does not start another reconcile, so a newer artifact is applied once the current wait ends. That is kustomize-controller's default; the opt-in `CancelHealthCheckOnNewRevision` feature gate would cancel the wait instead.
 - The other environments are unchanged.
+
+## Flux results in at23
+`flux/syncroot/at23/dialogporten-flux-results.yaml` sends the results of at23 rollouts to `Altinn/dialogporten` as `repository_dispatch` events ([RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md)):
+
+- The `githubdispatch` `Provider` `dialogporten-github` posts with the token in the Secret `flux-dispatch-github-token`. The platform creates that Secret in `product-dialogporten` and renews the token every 30 minutes, so this repository does not define it.
+- The `Alert` `dialogporten-reconciliation` sends the events of `dialogporten-apps`, errors included. The receiving workflow treats `Health check passed` as a successful rollout.
+- The `Alert` `dialogporten-source-errors` sends the errors of the `dialogporten-manifests` `OCIRepository`, which happen before `dialogporten-apps` gets an artifact.
+- Both `Alert`s set `schema_version: "1"`, `product: dialogporten`, `environment: at23`, `cluster: dis-core-at23-aks` and `repository: Altinn/dialogporten`. `ci-cd-flux-reconciliation-result.yml` in `Altinn/dialogporten` rejects events with other values.
+- The `Alert`s stay suspended until the pilot is activated ([altinn-platform#4383](https://github.com/Altinn/altinn-platform/issues/4383)). Suspending them again stops the events without affecting the rollout.
 
 ## Release of a Flux revision
 Flux sends the result of each at23 rollout to `Altinn/dialogporten` ([RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md)). The event names the artifact (`revision`, `main@sha256:<digest>`) and the commit of this repository it was published from (`originRevision`, `main/<commit>`), but not the Dialogporten release. The receiving workflow gets that from `.github/actions/resolve-release`:
