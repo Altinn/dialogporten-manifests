@@ -8,7 +8,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `manifests/apps/<app>/base/`: canonical reusable app base manifests consumed by each environment overlay.
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
 - `manifests/environments/<env>/migration/`: the database migration `Job` for the env, applied by its own Flux Kustomization. See [Migration ordering](#migration-ordering).
-- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`, with two Flux Kustomizations: `dialogporten-migration` and `dialogporten-apps`. The `at23` overlay also has the `Receiver` for on-demand reconcile, and makes `dialogporten-apps` wait for its rollout. See [Rollout health checks](#rollout-health-checks).
+- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`, with two Flux Kustomizations: `dialogporten-migration` and `dialogporten-apps`. The `at23` overlay also has the `Receiver` for on-demand reconcile, makes `dialogporten-apps` wait for its rollout, and sends rollout results to `Altinn/dialogporten`. See [Rollout health checks](#rollout-health-checks) and [Flux results](#flux-results).
 - `flux/edge-syncroot/`: edge proxy routes (`Backend`, `BackendTLSPolicy`, `HTTPRoute`) per environment. The base uses `*.placeholder.invalid` hostnames and every `<env>` overlay must patch all of them; the `publish-edge-syncroot` job fails if any placeholder survives. `tt02` and `prod` include `components/platform-apim`, which routes through the old APIM via the platform-owned `platform/platform-upstream` `Backend`; reference it, do not redefine it. The cross-namespace `backendRef` needs a `ReferenceGrant` in the `platform` namespace.
 - `.github/workflows/publish-flux-artifacts.yml`: publishes OCI artifacts for syncroot and app manifests.
 - `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
@@ -51,6 +51,13 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - When a `Deployment` is added to, renamed in or removed from `manifests/environments/at23`, update `healthChecks`. An unlisted `Deployment` is not checked, and a listed one that no longer exists fails every reconcile after the full timeout.
 - Do not replace `healthChecks` with `wait: true`. Flux would then also wait for every custom resource with a `Ready` condition, such as an `ExternalSecret` or `ScaledObject`, and report a failed rollout when one of them stays not ready. See `docs/summary.md#rollout-health-in-at23`.
 - Keep the timeout above the slowest expected rollout: the startup probes allow 5 minutes per pod.
+
+## Flux results
+
+- `flux/syncroot/at23/dialogporten-flux-results.yaml` sends at23 rollout results to `Altinn/dialogporten`: a `githubdispatch` `Provider` and two `Alert`s, one for `dialogporten-apps` and one for errors of the `dialogporten-manifests` `OCIRepository`. See `docs/summary.md#flux-results-in-at23`.
+- Keep each `Alert`'s `eventMetadata` and event source in step with the `subscriptions` of `ci-cd-flux-reconciliation-result.yml` in `Altinn/dialogporten`, which rejects any other product, environment, cluster, repository or resource.
+- Name event sources exactly. Do not add an error `Alert` for `dialogporten-apps`: `eventSeverity: info` already includes errors.
+- Do not define the Secret `flux-dispatch-github-token`. The platform creates it in `product-dialogporten` and renews its token.
 
 ## Release mapping
 - `.github/actions/resolve-release` maps the `originRevision` of a Flux event (`main/<commit>`) to the Dialogporten release by reading `images[].newTag` from `manifests/environments/<env>/kustomization.yaml` at that commit. `Altinn/dialogporten` pins it in the workflow that receives Flux results. See `docs/summary.md#release-of-a-flux-revision`.

@@ -1,0 +1,54 @@
+# Sends the results of at23 rollouts to Altinn/dialogporten as repository_dispatch
+# events (RFC 0019). The platform creates flux-dispatch-github-token and renews its
+# token. The Alerts stay suspended until the pilot is activated.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: dialogporten-github
+  namespace: product-dialogporten
+spec:
+  type: githubdispatch
+  address: https://github.com/Altinn/dialogporten
+  secretRef:
+    name: flux-dispatch-github-token
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: dialogporten-reconciliation
+  namespace: product-dialogporten
+spec:
+  suspend: true
+  providerRef:
+    name: dialogporten-github
+  # info includes errors, so dialogporten-apps needs no separate error Alert.
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: dialogporten-apps
+  eventMetadata:
+    schema_version: "1"
+    product: dialogporten
+    environment: at23
+    cluster: dis-core-at23-aks
+    repository: Altinn/dialogporten
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: dialogporten-source-errors
+  namespace: product-dialogporten
+spec:
+  suspend: true
+  providerRef:
+    name: dialogporten-github
+  eventSeverity: error
+  eventSources:
+    - kind: OCIRepository
+      name: dialogporten-manifests
+  eventMetadata:
+    schema_version: "1"
+    product: dialogporten
+    environment: at23
+    cluster: dis-core-at23-aks
+    repository: Altinn/dialogporten

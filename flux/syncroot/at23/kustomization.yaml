@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - ../base
   - dialogporten-receiver.yaml
+  - dialogporten-flux-results.yaml
 patches:
   - target:
       kind: Kustomization
