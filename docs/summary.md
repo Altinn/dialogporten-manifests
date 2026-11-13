@@ -41,7 +41,7 @@ The trigger is best effort (`continue-on-error: true`): the request only tells F
 
 Only `at23` is triggered today. It is the only environment on DIS core, and only its syncroot overlay has the `Receiver`, because a cluster without Flux 2.9 rejects the `generic-oidc` type. Runs without an `environment` (pushes to `main`, manual dispatch without the input) skip the trigger and rely on polling.
 
-The trigger does not tell CI whether the rollout succeeded. [RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md) covers that; see [Rollout health in at23](#rollout-health-in-at23).
+The trigger does not tell CI whether the rollout succeeded. Flux reports that separately ([RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md)); see [Rollout health in at23](#rollout-health-in-at23) and [Release of a Flux revision](#release-of-a-flux-revision).
 
 ## Rollout health in at23
 In `at23`, `dialogporten-apps` has `healthChecks` on its five `Deployment`s and a 15-minute `timeout`, patched in `flux/syncroot/at23/kustomization.yaml`. Flux then marks it `Ready` only after every `Deployment` has rolled out, and sends the `Health check passed` event that RFC 0019 uses to report a successful rollout.
@@ -51,6 +51,16 @@ In `at23`, `dialogporten-apps` has `healthChecks` on its five `Deployment`s and 
 - A rollout that stops making progress fails at the `Deployment`'s 10-minute progress deadline, without waiting for the full timeout. The 15 minutes leave room for a new node plus the 5-minute startup probe window.
 - While it waits, the Kustomization does not start another reconcile, so a newer artifact is applied once the current wait ends. That is kustomize-controller's default; the opt-in `CancelHealthCheckOnNewRevision` feature gate would cancel the wait instead.
 - The other environments are unchanged.
+
+## Release of a Flux revision
+Flux sends the result of each at23 rollout to `Altinn/dialogporten` ([RFC 0019](https://github.com/Altinn/altinn-platform/blob/main/rfcs/0019-flux-workflow-notifications.md)). The event names the artifact (`revision`, `main@sha256:<digest>`) and the commit of this repository it was published from (`originRevision`, `main/<commit>`), but not the Dialogporten release. The receiving workflow gets that from `.github/actions/resolve-release`:
+
+1. The action reads `manifests/environments/<env>/kustomization.yaml` at that commit. Every Dialogporten image must have the same tag.
+2. An at23 tag is `<version>-<short commit>`, and the action finds the full commit among the commits on Dialogporten's `main`. The other environments deploy `<version>`, which only names a release tag, and a tag can be moved. The action leaves them unmapped until release tags are immutable ([altinn-platform#4387](https://github.com/Altinn/altinn-platform/issues/4387)).
+
+A commit cannot change, so the mapping never reads a mutable tag, and a result never gets the release of another revision. When a step fails, `app_version` and `app_commit` are empty. Before a follow-up job relies on them, compare `app_version` with the version the environment runs; Dialogporten has no endpoint for that yet.
+
+`test-resolve-release.yml` runs the action against real commits of both repositories.
 
 ## Database migrations
 New app images must not start before their database migrations have run. Two Flux Kustomizations in `flux/syncroot/base/dialogporten-flux-kustomization.yaml` read the same artifact:

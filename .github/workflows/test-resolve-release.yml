@@ -1,0 +1,64 @@
+name: Test resolve-release
+
+# Runs the action against real commits of this repository and Altinn/dialogporten.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/actions/resolve-release/**
+      - .github/workflows/test-resolve-release.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    # GitHub-hosted for yq, like the receiving workflow in Altinn/dialogporten.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: at23 build of a main commit
+            origin_revision: main/5742a6a85fb025007d4359e7aa61b6893eb16513
+            environment: at23
+            app_version: 1.126.3-f9308bf
+            app_commit: f9308bf390d0b92141afbc8051b41f40a6d8d225
+          - name: at23 build of an earlier artifact
+            origin_revision: main/2aeb504e7a7df07258ecb43b7b4cec35ceac4493
+            environment: at23
+            app_version: 1.126.3-6edd26e
+            app_commit: 6edd26e37450b0b20b9fc5abf629aa333c996f1f
+          - name: tt02 release tag, not mapped
+            origin_revision: main/5742a6a85fb025007d4359e7aa61b6893eb16513
+            environment: tt02
+          - name: Unknown commit
+            origin_revision: main/0000000000000000000000000000000000000000
+            environment: at23
+          - name: Revision from another branch
+            origin_revision: feature/5742a6a85fb025007d4359e7aa61b6893eb16513
+            environment: at23
+          - name: Environment without an overlay
+            origin_revision: main/5742a6a85fb025007d4359e7aa61b6893eb16513
+            environment: xx
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve the release
+        id: release
+        uses: ./.github/actions/resolve-release
+        with:
+          origin_revision: ${{ matrix.origin_revision }}
+          environment: ${{ matrix.environment }}
+
+      - name: Check the outputs
+        env:
+          WANT: ${{ matrix.app_version }} ${{ matrix.app_commit }}
+          GOT: ${{ steps.release.outputs.app_version }} ${{ steps.release.outputs.app_commit }}
+        run: |
+          if [ "$GOT" != "$WANT" ]; then
+            echo "::error::Got '$GOT', want '$WANT'."
+            exit 1
+          fi
