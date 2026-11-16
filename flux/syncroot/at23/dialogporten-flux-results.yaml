@@ -26,6 +26,32 @@ spec:
   eventSources:
     - kind: Kustomization
       name: dialogporten-apps
+  # dialogporten-apps repeats this every 30 s while it waits for dialogporten-migration.
+  # dialogporten-migration-errors reports a broken migration.
+  exclusionList:
+    - "^Dependencies do not meet ready condition"
+  eventMetadata:
+    schema_version: "1"
+    product: dialogporten
+    environment: at23
+    cluster: dis-core-at23-aks
+    repository: Altinn/dialogporten
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: dialogporten-migration-errors
+  namespace: product-dialogporten
+spec:
+  suspend: true
+  providerRef:
+    name: dialogporten-github
+  # Errors only: the receiving workflow would count the migration's
+  # "Health check passed" as a successful rollout.
+  eventSeverity: error
+  eventSources:
+    - kind: Kustomization
+      name: dialogporten-migration
   eventMetadata:
     schema_version: "1"
     product: dialogporten

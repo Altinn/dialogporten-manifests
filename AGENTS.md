@@ -54,9 +54,11 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 
 ## Flux results
 
-- `flux/syncroot/at23/dialogporten-flux-results.yaml` sends at23 rollout results to `Altinn/dialogporten`: a `githubdispatch` `Provider` and two `Alert`s, one for `dialogporten-apps` and one for errors of the `dialogporten-manifests` `OCIRepository`. See `docs/summary.md#flux-results-in-at23`.
+- `flux/syncroot/at23/dialogporten-flux-results.yaml` sends at23 rollout results to `Altinn/dialogporten`: a `githubdispatch` `Provider` and three `Alert`s: one for `dialogporten-apps`, and one each for the errors of `dialogporten-migration` and of the `dialogporten-manifests` `OCIRepository`. See `docs/summary.md#flux-results-in-at23`.
 - Keep each `Alert`'s `eventMetadata` and event source in step with the `subscriptions` of `ci-cd-flux-reconciliation-result.yml` in `Altinn/dialogporten`, which rejects any other product, environment, cluster, repository or resource.
 - Name event sources exactly. Do not add an error `Alert` for `dialogporten-apps`: `eventSeverity: info` already includes errors.
+- Keep `dialogporten-migration-errors` at `eventSeverity: error`. The receiving workflow would count the migration's `Health check passed` as a successful rollout.
+- Keep the `exclusionList` of `dialogporten-reconciliation`. While `dialogporten-migration` is not Ready, `dialogporten-apps` sends `Dependencies do not meet ready condition` every 30 s, and each event that notification-controller passes on starts a workflow run that only records it.
 - Do not define the Secret `flux-dispatch-github-token`. The platform creates it in `product-dialogporten` and renews its token.
 
 ## Release mapping
