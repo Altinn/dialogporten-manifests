@@ -1,6 +1,6 @@
 # Sends the results of at23 rollouts to Altinn/dialogporten as repository_dispatch
 # events (RFC 0019). The platform creates flux-dispatch-github-token and renews its
-# token. The Alerts stay suspended until the pilot is activated.
+# token. Setting suspend: true on the Alerts stops the events, not the rollout.
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Provider
 metadata:
@@ -18,7 +18,7 @@ metadata:
   name: dialogporten-reconciliation
   namespace: product-dialogporten
 spec:
-  suspend: true
+  suspend: false
   providerRef:
     name: dialogporten-github
   # info includes errors, so dialogporten-apps needs no separate error Alert.
@@ -43,7 +43,7 @@ metadata:
   name: dialogporten-migration-errors
   namespace: product-dialogporten
 spec:
-  suspend: true
+  suspend: false
   providerRef:
     name: dialogporten-github
   # Errors only: the receiving workflow would count the migration's
@@ -65,7 +65,7 @@ metadata:
   name: dialogporten-source-errors
   namespace: product-dialogporten
 spec:
-  suspend: true
+  suspend: false
   providerRef:
     name: dialogporten-github
   eventSeverity: error
