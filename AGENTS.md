@@ -8,7 +8,8 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `manifests/apps/<app>/base/`: canonical reusable app base manifests consumed by each environment overlay.
 - `manifests/environments/<env>/apps/<app>/`: per-env app overlays (patch-only).
 - `manifests/environments/<env>/migration/`: the database migration `Job` for the env, applied by its own Flux Kustomization. See [Migration ordering](#migration-ordering).
-- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`, with two Flux Kustomizations: `dialogporten-migration` and `dialogporten-apps`. The `at23` overlay also has the `Receiver` for on-demand reconcile, makes `dialogporten-apps` wait for its rollout, and sends rollout results to `Altinn/dialogporten`. See [Rollout health checks](#rollout-health-checks) and [Flux results](#flux-results).
+- `manifests/environments/at23/flux-canary/`: a temporary test `Deployment` for the RFC 0019 acceptance run, applied by its own Flux Kustomization. See [Flux canary](#flux-canary).
+- `flux/syncroot/`: bootstrap wiring that selects `flux-system/<env>`, with two Flux Kustomizations: `dialogporten-migration` and `dialogporten-apps`. The `at23` overlay also has the `Receiver` for on-demand reconcile, makes `dialogporten-apps` wait for its rollout, sends rollout results to `Altinn/dialogporten`, and runs a temporary Flux canary. See [Rollout health checks](#rollout-health-checks), [Flux results](#flux-results) and [Flux canary](#flux-canary).
 - `flux/edge-syncroot/`: edge proxy routes (`Backend`, `BackendTLSPolicy`, `HTTPRoute`) per environment. The base uses `*.placeholder.invalid` hostnames and every `<env>` overlay must patch all of them; the `publish-edge-syncroot` job fails if any placeholder survives. `tt02` and `prod` include `components/platform-apim`, which routes through the old APIM via the platform-owned `platform/platform-upstream` `Backend`; reference it, do not redefine it. The cross-namespace `backendRef` needs a `ReferenceGrant` in the `platform` namespace.
 - `.github/workflows/publish-flux-artifacts.yml`: publishes OCI artifacts for syncroot and app manifests.
 - `.github/workflows/workflow-send-ci-cd-status-slack-message.yml`: reusable failure alerts for image-tag updates and artifact publishing.
@@ -60,6 +61,13 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - Keep `dialogporten-migration-errors` at `eventSeverity: error`. The receiving workflow would count the migration's `Health check passed` as a successful rollout.
 - Keep the `exclusionList` of `dialogporten-reconciliation`. While `dialogporten-migration` is not Ready, `dialogporten-apps` sends `Dependencies do not meet ready condition` every 30 s, and each event that notification-controller passes on starts a workflow run that only records it.
 - Do not define the Secret `flux-dispatch-github-token`. The platform creates it in `product-dialogporten` and renews its token.
+
+## Flux canary
+
+- `flux/syncroot/at23/dialogporten-flux-canary.yaml` runs the test `Deployment` in `manifests/environments/at23/flux-canary/` with its own `OCIRepository`, `Kustomization` and `Alert`s, for the RFC 0019 acceptance run ([altinn-platform#4384](https://github.com/Altinn/altinn-platform/issues/4384)). Test rollout and source failures on the canary, never on `dialogporten-apps`, which is Dialogporten's live test deployment. See `docs/summary.md#flux-canary-in-at23`.
+- Keep the canary's names in step with its subscription in `ci-cd-flux-reconciliation-result.yml` in `Altinn/dialogporten`.
+- CI does not build `manifests/environments/at23/flux-canary/`, so a test can break its build without blocking publishing. Build it locally for any other change, and revert each test change once its result is recorded.
+- Remove the canary, its subscription in `Altinn/dialogporten` and this section after the acceptance run, before the receiving workflow starts follow-up jobs.
 
 ## Release mapping
 - `.github/actions/resolve-release` maps the `originRevision` of a Flux event (`main/<commit>`) to the Dialogporten release by reading `images[].newTag` from `manifests/environments/<env>/kustomization.yaml` at that commit. `Altinn/dialogporten` pins it in the workflow that receives Flux results. See `docs/summary.md#release-of-a-flux-revision`.
