@@ -27,6 +27,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 
 - `publish-syncroot` pushes only when `flux/syncroot` differs from the published `dialogporten/syncroot:<env>` artifact, checked with `flux diff artifact`. Every new artifact makes the platform's syncroot Kustomization reconcile and wait for `dialogporten-apps`, and that wait times out during slow rollouts. See `docs/summary.md#syncroot-publishing`.
 - Keep comparison errors counting as a difference, so a missing tag, for example for a new environment, still publishes.
+- The platform applies `flux/syncroot` without pruning (`prune_enabled` of the dis-modules module `dis_products_syncroot_multitenancy` defaults to `false`). An object removed or renamed there stays in the cluster as last applied and keeps working: a removed `Alert`, for example, still sends events. Once the new artifact is applied, delete the old object by hand, and say so in the PR.
 
 ## Workflow failure notifications
 
@@ -66,7 +67,7 @@ This repository stores Dialogporten Flux manifests and wiring after the `main` r
 - `flux/syncroot/at23/dialogporten-flux-canary.yaml` runs the test `Deployment` in `manifests/environments/at23/flux-canary/` with its own `OCIRepository`, `Kustomization` and `Alert`s, for the RFC 0019 acceptance run ([altinn-platform#4384](https://github.com/Altinn/altinn-platform/issues/4384)). Test rollout and source failures on the canary, never on `dialogporten-apps`, which is Dialogporten's live test deployment. See `docs/summary.md#flux-canary-in-at23`.
 - Keep the canary's names in step with its subscription in `ci-cd-flux-reconciliation-result.yml` in `Altinn/dialogporten`.
 - CI does not build `manifests/environments/at23/flux-canary/`, so a test can break its build without blocking publishing. Build it locally for any other change, and revert each test change once its result is recorded.
-- Remove the canary, its subscription in `Altinn/dialogporten` and this section after the acceptance run, before the receiving workflow starts follow-up jobs.
+- Remove the canary, its subscription in `Altinn/dialogporten` and this section after the acceptance run, before the receiving workflow starts follow-up jobs. Then delete the canary's `OCIRepository`, `Kustomization` and `Alert`s by hand (see [Syncroot publishing](#syncroot-publishing)). Deleting its `Kustomization` also removes the `Deployment`.
 
 ## Release mapping
 - `.github/actions/resolve-release` maps the `originRevision` of a Flux event (`main/<commit>`) to the Dialogporten release by reading `images[].newTag` from `manifests/environments/<env>/kustomization.yaml` at that commit. `Altinn/dialogporten` pins it in the workflow that receives Flux results. See `docs/summary.md#release-of-a-flux-revision`.
