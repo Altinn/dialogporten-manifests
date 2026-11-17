@@ -8,7 +8,8 @@ This repo now separates workload definitions, environment overlays, and Flux wir
 - `manifests/apps/<app>/base/`: Canonical per-app base manifests used by environment overlays.
 - `manifests/environments/<env>/apps/<app>/`: Per-env app overlays that patch app bases.
 - `manifests/environments/<env>/migration/`: The database migration `Job` (`manifests/jobs/web-api-migration-job/base/`) with the env's patch and migration-bundle image tag. See [Database migrations](#database-migrations).
-- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + two Kustomizations: `dialogporten-migration` selects `./environments/<env>/migration`, and `dialogporten-apps` selects `./environments/<env>` within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile, makes `dialogporten-apps` wait for its rollout (see [Rollout health in at23](#rollout-health-in-at23)), and sends rollout results to `Altinn/dialogporten` (see [Flux results in at23](#flux-results-in-at23)).
+- `manifests/environments/at23/flux-canary/`: A temporary test `Deployment` for the RFC 0019 acceptance run. See [Flux canary in at23](#flux-canary-in-at23).
+- `flux/syncroot/`: Bootstrap namespace + `OCIRepository` + two Kustomizations: `dialogporten-migration` selects `./environments/<env>/migration`, and `dialogporten-apps` selects `./environments/<env>` within the manifests artifact. The `at23` overlay also has the `Receiver` for on-demand reconcile, makes `dialogporten-apps` wait for its rollout (see [Rollout health in at23](#rollout-health-in-at23)), sends rollout results to `Altinn/dialogporten` (see [Flux results in at23](#flux-results-in-at23)), and runs a temporary Flux canary (see [Flux canary in at23](#flux-canary-in-at23)).
 - `flux/edge-syncroot/`: Edge proxy routing (Envoy Gateway `Backend`, `BackendTLSPolicy`, `HTTPRoute`). The base uses `*.placeholder.invalid` hostnames; each `<env>` overlay patches the public hostname and the backend hostname. `tt02` and `prod` include `components/platform-apim`, which sends traffic to the old APIM through the platform-owned `platform/platform-upstream` `Backend` (and its `BackendTLSPolicy`); APIM strips the `/dialogporten` prefix, so those routes do not rewrite GraphQL paths. `dp-dis-upstream` is still rendered there, unused, so cutover is removing the component. Published as `dialogporten/edge-syncroot:<env>`.
 - `manifests/common/base/feature-metrics-collector.yaml`: OpenTelemetry Collector that sends the web APIs' feature metrics (cost allocation) to `dp-be-<env>-applicationInsights`, since the platform collector drops logs below Warning. Its image is pinned in the manifest, not in the env `images:` block.
 
@@ -70,6 +71,25 @@ Flux sends the result of each at23 rollout to `Altinn/dialogporten` ([RFC 0019](
 A commit cannot change, so the mapping never reads a mutable tag, and a result never gets the release of another revision. When a step fails, `app_version` and `app_commit` are empty. Before a follow-up job relies on them, compare `app_version` with the version the environment runs; Dialogporten has no endpoint for that yet.
 
 `test-resolve-release.yml` runs the action against real commits of both repositories.
+
+## Flux canary in at23
+`flux/syncroot/at23/dialogporten-flux-canary.yaml` runs a small test `Deployment` for the RFC 0019 acceptance run ([altinn-platform#4384](https://github.com/Altinn/altinn-platform/issues/4384)). Rollout and source failures are tested on it instead of on `dialogporten-apps`, which is Dialogporten's live test deployment:
+
+- Its `OCIRepository` pulls the same app artifact (`main`), so a source test leaves `dialogporten-manifests` alone.
+- Its `Kustomization` applies `./environments/at23/flux-canary` with a 3-minute timeout and retries every 5 minutes after a failure.
+- Its two `Alert`s work like those of `dialogporten-apps`, with the same metadata: one sends the `Health check passed` event of the `Kustomization`, and the other sends the errors of the `Kustomization` and the `OCIRepository`. The receiving workflow records them under the canary's names.
+
+The pod becomes ready `READY_AFTER_SECONDS` after it starts, and the `Deployment` has a 60-second progress deadline. Each test is a PR to `main`, reverted once the receiving workflow has recorded the result:
+
+| Test | Change | Expected result |
+|---|---|---|
+| Failed replacement | `READY_AFTER_SECONDS: "86400"` | `failed` after the progress deadline. The old pod keeps running. |
+| Health check timeout | `READY_AFTER_SECONDS: "86400"` and `progressDeadlineSeconds: 600` | `failed` after the 3-minute timeout |
+| Recovery of the same revision | `READY_AFTER_SECONDS: "240"` | `failed` after the progress deadline, then `succeeded` for the same revision at the next retry |
+| Build failure | A file that does not exist, added to `resources` in its `kustomization.yaml` | `failed` with the build error |
+| Source failure | `ref.tag` of its `OCIRepository` set to a tag that does not exist | `failed` without a revision |
+
+CI does not build the canary, so a broken one does not block publishing. The source test changes `flux/syncroot`, so it starts once the platform applies the new syncroot artifact. While the canary fails, the platform's syncroot `Kustomization` is not Ready either, as with a failed `dialogporten-apps` ([#108](https://github.com/Altinn/dialogporten-manifests/issues/108)).
 
 ## Database migrations
 New app images must not start before their database migrations have run. Two Flux Kustomizations in `flux/syncroot/base/dialogporten-flux-kustomization.yaml` read the same artifact:
