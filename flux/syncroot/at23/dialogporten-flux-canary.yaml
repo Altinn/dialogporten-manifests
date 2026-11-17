@@ -40,7 +40,6 @@ metadata:
   name: dialogporten-flux-canary
   namespace: product-dialogporten
 spec:
-  suspend: true
   providerRef:
     name: dialogporten-github
   # Successful rollouts only, like dialogporten-reconciliation.
@@ -63,7 +62,6 @@ metadata:
   name: dialogporten-flux-canary-errors
   namespace: product-dialogporten
 spec:
-  suspend: true
   providerRef:
     name: dialogporten-github
   eventSeverity: error
