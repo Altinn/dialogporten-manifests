@@ -3,3 +3,4 @@ kind: Kustomization
 namespace: product-dialogporten
 resources:
   - deployment.yaml
+  - does-not-exist.yaml

@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/part-of: dialogporten
 spec:
   replicas: 1
-  progressDeadlineSeconds: 600
+  progressDeadlineSeconds: 60
   selector:
     matchLabels:
       app.kubernetes.io/name: dialogporten-flux-canary
@@ -42,7 +42,7 @@ spec:
               while true; do sleep 3600 & wait $!; done
           env:
             - name: READY_AFTER_SECONDS
-              value: "86400"
+              value: "0"
           readinessProbe:
             exec:
               command: [sh, -c, test -f /tmp/ready]
