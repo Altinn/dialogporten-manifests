@@ -21,15 +21,16 @@ spec:
   suspend: false
   providerRef:
     name: dialogporten-github
-  # info includes errors, so dialogporten-apps needs no separate error Alert.
+  # Successful rollouts only. Every event sent starts a workflow run, and the
+  # workflow ignores progress events. dialogporten-errors sends the failures.
   eventSeverity: info
+  # Not dialogporten-migration: the workflow would count its "Health check passed"
+  # as a successful rollout.
   eventSources:
     - kind: Kustomization
       name: dialogporten-apps
-  # dialogporten-apps repeats this every 30 s while it waits for dialogporten-migration.
-  # dialogporten-migration-errors reports a broken migration.
-  exclusionList:
-    - "^Dependencies do not meet ready condition"
+  inclusionList:
+    - "^Health check passed in "
   eventMetadata:
     schema_version: "1"
     product: dialogporten
@@ -40,36 +41,18 @@ spec:
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Alert
 metadata:
-  name: dialogporten-migration-errors
+  name: dialogporten-errors
   namespace: product-dialogporten
 spec:
   suspend: false
   providerRef:
     name: dialogporten-github
-  # Errors only: the receiving workflow would count the migration's
-  # "Health check passed" as a successful rollout.
   eventSeverity: error
   eventSources:
     - kind: Kustomization
+      name: dialogporten-apps
+    - kind: Kustomization
       name: dialogporten-migration
-  eventMetadata:
-    schema_version: "1"
-    product: dialogporten
-    environment: at23
-    cluster: dis-core-at23-aks
-    repository: Altinn/dialogporten
----
-apiVersion: notification.toolkit.fluxcd.io/v1beta3
-kind: Alert
-metadata:
-  name: dialogporten-source-errors
-  namespace: product-dialogporten
-spec:
-  suspend: false
-  providerRef:
-    name: dialogporten-github
-  eventSeverity: error
-  eventSources:
     - kind: OCIRepository
       name: dialogporten-manifests
   eventMetadata:
