@@ -42,10 +42,13 @@ metadata:
 spec:
   providerRef:
     name: dialogporten-github
+  # Successful rollouts only, like dialogporten-reconciliation.
   eventSeverity: info
   eventSources:
     - kind: Kustomization
       name: dialogporten-flux-canary
+  inclusionList:
+    - "^Health check passed in "
   eventMetadata:
     schema_version: "1"
     product: dialogporten
@@ -56,13 +59,15 @@ spec:
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Alert
 metadata:
-  name: dialogporten-flux-canary-source-errors
+  name: dialogporten-flux-canary-errors
   namespace: product-dialogporten
 spec:
   providerRef:
     name: dialogporten-github
   eventSeverity: error
   eventSources:
+    - kind: Kustomization
+      name: dialogporten-flux-canary
     - kind: OCIRepository
       name: dialogporten-flux-canary
   eventMetadata:

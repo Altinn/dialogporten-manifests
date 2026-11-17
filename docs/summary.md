@@ -78,7 +78,7 @@ A commit cannot change, so the mapping never reads a mutable tag, and a result n
 
 - Its `OCIRepository` pulls the same app artifact (`main`), so a source test leaves `dialogporten-manifests` alone.
 - Its `Kustomization` applies `./environments/at23/flux-canary` with a 3-minute timeout and retries every 5 minutes after a failure.
-- Its two `Alert`s send the events of the `Kustomization` and the errors of the `OCIRepository`, with the same metadata as the other `Alert`s. The receiving workflow records them under the canary's names.
+- Its two `Alert`s work like those of `dialogporten-apps`, with the same metadata: one sends the `Health check passed` event of the `Kustomization`, and the other sends the errors of the `Kustomization` and the `OCIRepository`. The receiving workflow records them under the canary's names.
 
 The pod becomes ready `READY_AFTER_SECONDS` after it starts, and the `Deployment` has a 60-second progress deadline. Each test is a PR to `main`, reverted once the receiving workflow has recorded the result:
 
