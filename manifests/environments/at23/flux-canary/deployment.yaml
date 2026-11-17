@@ -42,7 +42,7 @@ spec:
               while true; do sleep 3600 & wait $!; done
           env:
             - name: READY_AFTER_SECONDS
-              value: "0"
+              value: "86400"
           readinessProbe:
             exec:
               command: [sh, -c, test -f /tmp/ready]
