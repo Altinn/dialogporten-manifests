@@ -11,7 +11,7 @@ spec:
   provider: azure
   url: oci://altinncr.azurecr.io/dialogporten/dialogporten-sync
   ref:
-    tag: main
+    tag: does-not-exist
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
