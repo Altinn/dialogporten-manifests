@@ -76,33 +76,3 @@ spec:
     environment: at23
     cluster: dis-core-at23-aks
     repository: Altinn/dialogporten
----
-# GitHub rejection test (altinn-platform#4384). The platform token covers only
-# Altinn/dialogporten, so GitHub refuses these dispatches, and notification-controller
-# records NotificationDispatchFailed on the Alert. Remove both after the test, then
-# delete them by hand.
-apiVersion: notification.toolkit.fluxcd.io/v1beta3
-kind: Provider
-metadata:
-  name: dialogporten-flux-canary-rejection
-  namespace: product-dialogporten
-spec:
-  type: githubdispatch
-  address: https://github.com/Altinn/dialogporten-frontend
-  secretRef:
-    name: flux-dispatch-github-token
----
-apiVersion: notification.toolkit.fluxcd.io/v1beta3
-kind: Alert
-metadata:
-  name: dialogporten-flux-canary-rejection
-  namespace: product-dialogporten
-spec:
-  providerRef:
-    name: dialogporten-flux-canary-rejection
-  eventSeverity: info
-  eventSources:
-    - kind: Kustomization
-      name: dialogporten-flux-canary
-  inclusionList:
-    - "^Health check passed in "
