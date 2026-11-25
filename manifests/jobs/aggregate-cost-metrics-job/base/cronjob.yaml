@@ -41,7 +41,10 @@ spec:
                 - name: DOTNET_ENVIRONMENT
                   value: set-by-env
                 - name: APPLICATIONINSIGHTS_CONNECTION_STRING
-                  value: ${DIALOGPORTEN_APPINSIGHTS_CONNECTION_STRING}
+                  valueFrom:
+                    secretKeyRef:
+                      name: dialogporten-secrets
+                      key: dialogportenAppInsightsConnectionString
                 - name: MetricsAggregation__StorageAccountName
                   value: ${DIALOGPORTEN_COST_METRICS_STORAGE_ACCOUNT_NAME}
                 - name: MetricsAggregation__StorageContainerName
