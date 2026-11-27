@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-provisioner-job
+  labels:
+    app.kubernetes.io/name: db-provisioner-job
+    app.kubernetes.io/part-of: dialogporten
+spec:
+  schedule: "0 0 1 1 *"
+  suspend: true
+  # Prevent retroactive runs if someone temporarily unsuspends the CronJob.
+  # On-demand execution should be done by creating a Job from this template.
+  startingDeadlineSeconds: 60
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # The run is additive and idempotent, but a partial run should be inspected
+      # rather than retried blindly, so failures are not re-attempted.
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: db-provisioner-job
+            app.kubernetes.io/part-of: dialogporten
+            azure.workload.identity/use: "true"
+        spec:
+          restartPolicy: Never
+          serviceAccountName: db-provisioner
+          containers:
+            - name: db-provisioner
+              image: ghcr.io/altinn/dialogporten-db-provisioner:set-by-ci
+              env:
+                # Connection details only. The job authenticates to PostgreSQL with
+                # its own workload identity, so no secret is mounted.
+                - name: PGHOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: db-provisioner-runtime
+                      key: PGHOST
+                - name: PG_DATABASE
+                  value: dialogporten
+                - name: PG_ADMIN_ROLE
+                  value: product-dialogporten-db-provisioner
+                - name: PG_OWNER_ROLE
+                  value: dialogportenPgAdmin
+                # JSON array of { applicationIdentity, profile } entries. The job
+                # resolves each entry's managed identity name and object id from the
+                # ApplicationIdentity status at runtime.
+                - name: PROVISION_WORKLOADS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: db-provisioner-runtime
+                      key: PROVISION_WORKLOADS
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: http://otel-collector.monitoring.svc.cluster.local:4317
+                - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: grpc
+                - name: OTEL_SERVICE_NAME
+                  value: dialogporten-db-provisioner-job
+                - name: POD_UID
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.uid
+                - name: OTEL_RESOURCE_ATTRIBUTES
+                  value: "k8s.pod.uid=$(POD_UID)"
